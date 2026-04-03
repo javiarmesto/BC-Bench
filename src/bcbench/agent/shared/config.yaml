@@ -79,7 +79,7 @@ skills:
 # 2. whether to pass --agent=<agent-name> to copilot or claude
 agents:
   enabled: true
-  name: al-developer
+  name: al-developer-bench
 
 mcp:
   servers:

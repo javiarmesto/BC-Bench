@@ -117,6 +117,7 @@ Un agente (Claude Code o Copilot) con instrucciones ALDC debería:
 ├────────────────────────┬─────────────────────────┬─────────────────────────────────┤
 │     ESCENARIO A        │     ESCENARIO B         │     ESCENARIO C                │
 │     Baseline           │     ALDC + al-developer │     ALDC + al-conductor (TDD)  │
+│     (bench mode)        │     (bench mode)               │
 │                        │                         │                                │
 │  Prompt genérico       │  AGENTS.md + routing    │  AGENTS.md + routing           │
 │  Sin skills            │  11 skills de dominio   │  11 skills de dominio          │
@@ -138,7 +139,7 @@ Un agente (Claude Code o Copilot) con instrucciones ALDC debería:
 | **Enfoque** | Implementación directa: lee problema, busca código, aplica fix | Orquestación TDD: delega a subagentes de planning, implementación y review |
 | **Ciclo** | Lineal: entender → implementar → validar | TDD: RED (test que falla) → GREEN (código mínimo) → REFACTOR |
 | **Ideal para** | bug-fix (tareas tácticas, complejidad baja) | test-generation (donde escribir tests primero es exactamente el objetivo) |
-| **Riesgo en BC-Bench** | Ninguno: funciona bien en modo no-interactivo | HITL gates pueden causar que el agente se detenga esperando aprobación |
+| **Riesgo en BC-Bench** | Bajo: funciona bien en modo no-interactivo | Los HITL gates originales bloquearían la ejecución (resuelto con bench-mode) |
 | **Overhead** | Bajo: actúa directamente | Alto: planifica, documenta, revisa (consume más tokens y tiempo) |
 
 La guía de routing de ALDC recomienda:
@@ -146,6 +147,24 @@ La guía de routing de ALDC recomienda:
 - **TDD orchestration** → `al-conductor`
 
 El escenario C es especialmente interesante para la categoría **test-generation**, donde el enfoque TDD del conductor (escribir tests primero) alinea perfectamente con lo que BC-Bench pide.
+
+### Versiones Bench-Mode (sin HITL)
+
+Para la evaluación automatizada se crearon versiones **bench-mode** de ambos agentes:
+
+| Agente original | Agente bench | Cambios |
+|---|---|---|
+| `al-developer` | `al-developer-bench` | PAUSE gates → auto-continue, decisiones autónomas |
+| `al-conductor` | `al-conductor-bench` | 4 HARD GATES eliminados, auto-aprobación de planes, sin espera por usuario |
+
+Los agentes bench-mode **mantienen todo el conocimiento AL y los patrones TDD** de ALDC. Solo se eliminan las pausas de interacción humana que bloquearían la ejecución en modo `--print`.
+
+**Cambios específicos en `al-conductor-bench`:**
+- `HARD GATE — PLAN APPROVAL` → Auto-aprobación inmediata
+- `HARD GATE — IMPLEMENTATION START` → Continúa sin esperar
+- `HARD GATE — PHASE COMMIT` → Auto-continue a siguiente fase
+- `CRITICAL PAUSE POINTS` → Todos deshabilitados
+- Preguntas abiertas → Asunciones razonables automáticas
 
 ---
 
@@ -282,9 +301,9 @@ cd bc-bench
 # Evaluar un entry específico con ALDC (al-developer por defecto)
 .\scripts\Setup-ALDCEvaluation.ps1 -InstanceId "microsoft__BCApps-5633"
 
-# Evaluar con TDD orchestration (al-conductor)
+# Evaluar con TDD orchestration (al-conductor-bench, sin HITL)
 .\scripts\Setup-ALDCEvaluation.ps1 -InstanceId "microsoft__BCApps-5633" `
-    -AldcAgent "al-conductor" -Category "test-generation"
+    -AldcAgent "al-conductor-bench" -Category "test-generation"
 
 # Test rápido (solo 2 entries)
 .\scripts\Setup-ALDCEvaluation.ps1 -TestRun
@@ -386,7 +405,7 @@ agents:
   name: al-developer
 ```
 
-### Escenario B: ALDC + al-developer (implementación directa)
+### Escenario B: ALDC + al-developer-bench (implementación directa)
 
 ```yaml
 instructions:
@@ -395,10 +414,10 @@ skills:
   enabled: true
 agents:
   enabled: true
-  name: al-developer
+  name: al-developer-bench
 ```
 
-### Escenario C: ALDC + al-conductor (TDD orchestration)
+### Escenario C: ALDC + al-conductor-bench (TDD orchestration)
 
 ```yaml
 instructions:
@@ -407,8 +426,10 @@ skills:
   enabled: true
 agents:
   enabled: true
-  name: al-conductor
+  name: al-conductor-bench
 ```
+
+> **Nota:** Los agentes `-bench` son versiones sin HITL gates, diseñadas para evaluación automatizada. Mantienen todo el conocimiento AL y patrones TDD de ALDC.
 
 El flag `--al-mcp` (AL MCP server) se mantiene igual en todos los escenarios para que la única variable sea la configuración ALDC.
 
@@ -468,9 +489,9 @@ Esta integración está diseñada pero **no ejecutada**. Los resultados son hipo
 
 3. **Skills evidencing**: ALDC requiere que los agentes declaren qué skills cargaron. Esto consume tokens sin beneficio directo para la resolución del bug.
 
-4. **HITL gates del conductor**: El `al-conductor` incluye pausas obligatorias para aprobación humana entre fases. En modo automatizado de BC-Bench (`--print`), el conductor podría detenerse esperando aprobación que nunca llegará, resultando en un timeout o diff vacío. Este es el riesgo principal del escenario C.
+4. **HITL gates del conductor**: ~~El conductor original tiene 4 HARD GATES que bloquean ejecución.~~ **Resuelto**: se crearon versiones bench-mode (`al-conductor-bench`, `al-developer-bench`) con auto-continue en todos los gates. Los agentes mantienen el conocimiento AL y patrones TDD pero no esperan aprobación humana.
 
-5. **Delegación a subagentes**: El `al-conductor` delega a 3 subagentes (planning, implementation, review). No está verificado que Claude Code en modo `--print` con `--agent=al-conductor` soporte correctamente la delegación a subagentes definidos en `.claude/agents/`.
+5. **Delegación a subagentes**: El `al-conductor-bench` delega a 3 subagentes (planning, implementation, review). No está verificado que Claude Code en modo `--print` con `--agent=al-conductor-bench` soporte correctamente la delegación a subagentes definidos en `.claude/agents/`. Este es el principal riesgo pendiente de validar.
 
 6. **Workflow skills omitidos**: Los 10 workflow skills de ALDC (`al-build`, `al-spec-create`, etc.) no se incluyeron. Si el agente intenta invocarlos, no los encontrará.
 

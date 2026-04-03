@@ -56,7 +56,7 @@
     .\Setup-ALDCEvaluation.ps1 -InstanceId "microsoft__BCApps-5633" -CompareAll
 .EXAMPLE
     # Evaluate with TDD orchestration (al-conductor)
-    .\Setup-ALDCEvaluation.ps1 -InstanceId "microsoft__BCApps-5633" -AldcAgent "al-conductor" -Category "test-generation"
+    .\Setup-ALDCEvaluation.ps1 -InstanceId "microsoft__BCApps-5633" -AldcAgent "al-conductor-bench" -Category "test-generation"
 .EXAMPLE
     # Use existing container and repo
     .\Setup-ALDCEvaluation.ps1 -InstanceId "microsoft__BCApps-5633" -SkipContainerSetup -SkipRepoClone -RepoPath "C:\testbed"
@@ -109,8 +109,8 @@ param(
     [switch]$CompareAll,
 
     [Parameter(Mandatory = $false)]
-    [ValidateSet("al-developer", "al-conductor")]
-    [string]$AldcAgent = "al-developer"
+    [ValidateSet("al-developer-bench", "al-conductor-bench")]
+    [string]$AldcAgent = "al-developer-bench"
 )
 
 $ErrorActionPreference = "Stop"
