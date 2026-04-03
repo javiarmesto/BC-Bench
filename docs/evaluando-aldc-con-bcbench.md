@@ -109,28 +109,43 @@ Un agente (Claude Code o Copilot) con instrucciones ALDC debería:
 2. Seguir mejores patrones (events, extensions, naming conventions)
 3. Producir tests más robustos (mejor pass rate en test-generation)
 
-### Diseño del experimento
+### Diseño del experimento: 3 escenarios
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                    MISMO DATASET                        │
-│                    MISMO MODELO                         │
-│                    MISMO ENTORNO                        │
-├──────────────────────┬──────────────────────────────────┤
-│     SIN ALDC         │         CON ALDC                 │
-│  (baseline)          │  (instructions + skills + agent) │
-│                      │                                  │
-│  Prompt genérico     │  AGENTS.md con routing ALDC      │
-│  Sin skills          │  11 skills de dominio AL         │
-│  Sin reglas          │  8 reglas de coding standards    │
-│  Agente vanilla      │  --agent=al-developer            │
-│                      │                                  │
-│  → Métricas A        │  → Métricas B                    │
-└──────────────────────┴──────────────────────────────────┘
-                       │
-                  COMPARAR A vs B
-                  (pass rate, tokens, tiempo)
+┌────────────────────────────────────────────────────────────────────────────────────┐
+│                    MISMO DATASET · MISMO MODELO · MISMO ENTORNO                   │
+├────────────────────────┬─────────────────────────┬─────────────────────────────────┤
+│     ESCENARIO A        │     ESCENARIO B         │     ESCENARIO C                │
+│     Baseline           │     ALDC + al-developer │     ALDC + al-conductor (TDD)  │
+│                        │                         │                                │
+│  Prompt genérico       │  AGENTS.md + routing    │  AGENTS.md + routing           │
+│  Sin skills            │  11 skills de dominio   │  11 skills de dominio          │
+│  Sin reglas            │  8 reglas de coding     │  8 reglas de coding            │
+│  Agente vanilla        │  --agent=al-developer   │  --agent=al-conductor          │
+│                        │                         │                                │
+│  Enfoque:              │  Enfoque:               │  Enfoque:                      │
+│  "Arregla esto"        │  Implementación directa │  Planning → RED → GREEN →      │
+│                        │  con skills bajo demanda│  REFACTOR → Review             │
+│                        │                         │                                │
+│  → Métricas A          │  → Métricas B           │  → Métricas C                  │
+└────────────────────────┴─────────────────────────┴─────────────────────────────────┘
 ```
+
+### ¿Por qué al-developer Y al-conductor?
+
+| Aspecto | al-developer | al-conductor |
+|---|---|---|
+| **Enfoque** | Implementación directa: lee problema, busca código, aplica fix | Orquestación TDD: delega a subagentes de planning, implementación y review |
+| **Ciclo** | Lineal: entender → implementar → validar | TDD: RED (test que falla) → GREEN (código mínimo) → REFACTOR |
+| **Ideal para** | bug-fix (tareas tácticas, complejidad baja) | test-generation (donde escribir tests primero es exactamente el objetivo) |
+| **Riesgo en BC-Bench** | Ninguno: funciona bien en modo no-interactivo | HITL gates pueden causar que el agente se detenga esperando aprobación |
+| **Overhead** | Bajo: actúa directamente | Alto: planifica, documenta, revisa (consume más tokens y tiempo) |
+
+La guía de routing de ALDC recomienda:
+- **Bug fix / debugging** → `al-developer`
+- **TDD orchestration** → `al-conductor`
+
+El escenario C es especialmente interesante para la categoría **test-generation**, donde el enfoque TDD del conductor (escribir tests primero) alinea perfectamente con lo que BC-Bench pide.
 
 ---
 
@@ -264,14 +279,21 @@ $env:ADO_TOKEN = "..."                         # Solo si evalúas entries de mic
 git clone https://github.com/javiarmesto/bc-bench
 cd bc-bench
 
-# Evaluar un entry específico con ALDC
+# Evaluar un entry específico con ALDC (al-developer por defecto)
 .\scripts\Setup-ALDCEvaluation.ps1 -InstanceId "microsoft__BCApps-5633"
+
+# Evaluar con TDD orchestration (al-conductor)
+.\scripts\Setup-ALDCEvaluation.ps1 -InstanceId "microsoft__BCApps-5633" `
+    -AldcAgent "al-conductor" -Category "test-generation"
 
 # Test rápido (solo 2 entries)
 .\scripts\Setup-ALDCEvaluation.ps1 -TestRun
 
-# Comparar ALDC vs baseline
+# Comparar ALDC vs baseline (2 escenarios)
 .\scripts\Setup-ALDCEvaluation.ps1 -InstanceId "microsoft__BCApps-5633" -CompareBaseline
+
+# Comparar los 3 escenarios: baseline vs al-developer vs al-conductor
+.\scripts\Setup-ALDCEvaluation.ps1 -InstanceId "microsoft__BCApps-5633" -CompareAll
 
 # Usar otro modelo
 .\scripts\Setup-ALDCEvaluation.ps1 -TestRun -Model "claude-opus-4-6"
@@ -348,23 +370,11 @@ Esto ejecuta el agente y captura el parche generado, sin compilar ni ejecutar te
 
 ---
 
-## Cómo alternar entre ALDC y baseline
+## Cómo alternar entre escenarios
 
 El interruptor está en `src/bcbench/agent/shared/config.yaml`:
 
-### Con ALDC (evaluar el framework)
-
-```yaml
-instructions:
-  enabled: true
-skills:
-  enabled: true
-agents:
-  enabled: true
-  name: al-developer
-```
-
-### Sin ALDC (baseline)
+### Escenario A: Baseline (sin ALDC)
 
 ```yaml
 instructions:
@@ -376,29 +386,68 @@ agents:
   name: al-developer
 ```
 
-El flag `--al-mcp` (AL MCP server) se mantiene igual en ambos casos para que la única variable sea ALDC.
+### Escenario B: ALDC + al-developer (implementación directa)
+
+```yaml
+instructions:
+  enabled: true
+skills:
+  enabled: true
+agents:
+  enabled: true
+  name: al-developer
+```
+
+### Escenario C: ALDC + al-conductor (TDD orchestration)
+
+```yaml
+instructions:
+  enabled: true
+skills:
+  enabled: true
+agents:
+  enabled: true
+  name: al-conductor
+```
+
+El flag `--al-mcp` (AL MCP server) se mantiene igual en todos los escenarios para que la única variable sea la configuración ALDC.
+
+> **Nota:** El script `Setup-ALDCEvaluation.ps1` con `-CompareAll` automatiza los 3 escenarios, alternando el config.yaml entre cada ejecución y restaurándolo al final.
 
 ---
 
 ## Qué esperamos observar
 
-### Métricas a comparar
+### Métricas a comparar (3 escenarios)
 
-| Métrica | Baseline (sin ALDC) | Con ALDC | Significado |
-|---|---|---|---|
-| **Pass rate (bug-fix)** | X% | Y% | ¿ALDC ayuda a resolver más bugs? |
-| **Pass rate (test-gen)** | X% | Y% | ¿ALDC genera mejores tests? |
-| **Build errors** | N | M | ¿ALDC reduce errores de compilación? |
-| **Avg. execution time** | Xs | Ys | ¿ALDC añade overhead significativo? |
-| **Avg. tokens** | N | M | ¿Más contexto = más tokens? |
-| **Empty diffs** | N | M | ¿ALDC reduce "no sé qué hacer"? |
+| Métrica | A: Baseline | B: ALDC + al-developer | C: ALDC + al-conductor | Significado |
+|---|---|---|---|---|
+| **Pass rate (bug-fix)** | X% | Y% | Z% | ¿Qué enfoque resuelve más bugs? |
+| **Pass rate (test-gen)** | X% | Y% | Z% | ¿TDD genera mejores tests? |
+| **Build errors** | N | M | P | ¿Las reglas reducen errores de compilación? |
+| **Avg. execution time** | Xs | Ys | Zs | ¿Cuánto overhead añade cada enfoque? |
+| **Avg. tokens** | N | M | P | ¿Más contexto/orquestación = más coste? |
+| **Empty diffs** | N | M | P | ¿Qué enfoque reduce "no sé qué hacer"? |
 
-### Hipótesis de resultados
+### Hipótesis por escenario
 
-- **Pass rate**: Esperamos mejora, especialmente en tareas que requieren patrones específicos de AL (events, permissions, test structure)
-- **Build errors**: Esperamos reducción gracias a las reglas de naming, code-style y error-handling
-- **Tokens**: Esperamos aumento (más contexto = más tokens), la pregunta es si el trade-off vale la pena
-- **Tiempo**: Posible aumento marginal por el contexto adicional
+**Escenario B (al-developer) vs A (baseline):**
+- **Pass rate**: Mejora esperada, especialmente en tareas que requieren patrones específicos de AL (events, permissions, test structure)
+- **Build errors**: Reducción esperada gracias a las reglas de naming, code-style y error-handling
+- **Tokens**: Aumento (más contexto), la pregunta es si el trade-off vale la pena
+- **Tiempo**: Aumento marginal por el contexto adicional
+
+**Escenario C (al-conductor TDD) vs B (al-developer):**
+- **test-generation**: Posible ventaja del conductor — su ciclo RED-GREEN-REFACTOR alinea perfectamente con la tarea de "generar tests que fallan sin el fix y pasan con él"
+- **bug-fix**: Posible desventaja — el overhead de planning, documentación y review puede no compensar para fixes simples. Los HITL gates podrían causar que el agente se detenga prematuramente
+- **Tokens**: Aumento significativo — el conductor genera plans, phase-complete docs, y delega a subagentes
+- **Tiempo**: Aumento significativo — ciclo multi-fase vs implementación directa
+
+### La pregunta clave
+
+> ¿Merece la pena la orquestación TDD del conductor para test-generation, o el enfoque directo del developer es suficiente?
+
+Si el conductor supera al developer en test-generation pero no en bug-fix, confirmamos que **la elección del agente ALDC debe depender de la categoría** — exactamente como sugiere la guía de routing de ALDC.
 
 ---
 
@@ -415,13 +464,17 @@ Esta integración está diseñada pero **no ejecutada**. Los resultados son hipo
 
 1. **Contexto del agente**: ALDC añade ~22,000 líneas de instrucciones. Dependiendo del modelo, esto puede saturar el contexto o diluir la tarea principal.
 
-2. **al-developer vs vanilla**: El agente `al-developer` de ALDC está diseñado para desarrollo interactivo (con builds, tests, tools de VS Code). En BC-Bench, el agente opera en modo no-interactivo (`--print`), sin acceso a herramientas de VS Code. Algunas instrucciones de ALDC pueden no aplicar.
+2. **Modo no-interactivo**: Tanto `al-developer` como `al-conductor` están diseñados para desarrollo interactivo (con builds, tests, tools de VS Code). En BC-Bench, el agente opera en modo no-interactivo (`--print`), sin acceso a herramientas de VS Code. Algunas instrucciones de ALDC pueden no aplicar.
 
 3. **Skills evidencing**: ALDC requiere que los agentes declaren qué skills cargaron. Esto consume tokens sin beneficio directo para la resolución del bug.
 
-4. **HITL gates**: ALDC incluye pausas para aprobación humana. En modo automatizado de BC-Bench, estas pausas no aplican.
+4. **HITL gates del conductor**: El `al-conductor` incluye pausas obligatorias para aprobación humana entre fases. En modo automatizado de BC-Bench (`--print`), el conductor podría detenerse esperando aprobación que nunca llegará, resultando en un timeout o diff vacío. Este es el riesgo principal del escenario C.
 
-5. **Workflow skills omitidos**: Los 10 workflow skills de ALDC (`al-build`, `al-spec-create`, etc.) no se incluyeron. Si el agente intenta invocarlos, no los encontrará.
+5. **Delegación a subagentes**: El `al-conductor` delega a 3 subagentes (planning, implementation, review). No está verificado que Claude Code en modo `--print` con `--agent=al-conductor` soporte correctamente la delegación a subagentes definidos en `.claude/agents/`.
+
+6. **Workflow skills omitidos**: Los 10 workflow skills de ALDC (`al-build`, `al-spec-create`, etc.) no se incluyeron. Si el agente intenta invocarlos, no los encontrará.
+
+7. **Coste del conductor**: El ciclo TDD del conductor (planning + RED + GREEN + REFACTOR + review) consume significativamente más tokens que la implementación directa del developer. Para un dataset de ~100 entries, esto puede representar un coste considerable en API calls.
 
 ### Próximos pasos
 

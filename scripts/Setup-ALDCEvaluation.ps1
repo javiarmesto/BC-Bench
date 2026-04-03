@@ -34,7 +34,14 @@
 .PARAMETER SkipRepoClone
     Skip repository cloning (use existing repo at RepoPath).
 .PARAMETER CompareBaseline
-    Run evaluation twice: once with ALDC, once without, and compare results.
+    Run evaluation twice: once with ALDC (al-developer), once without, and compare results.
+.PARAMETER CompareAll
+    Run evaluation three times: baseline (no ALDC), ALDC + al-developer, ALDC + al-conductor (TDD).
+    Best for test-generation category where TDD orchestration may outperform direct implementation.
+.PARAMETER AldcAgent
+    ALDC agent to use: "al-developer" (tactical, default) or "al-conductor" (TDD orchestration).
+    al-conductor delegates to subagents (planning, implementation, review) and enforces TDD.
+    Recommended: al-developer for bug-fix, al-conductor for test-generation.
 .EXAMPLE
     # Evaluate a single entry with ALDC
     .\Setup-ALDCEvaluation.ps1 -InstanceId "microsoft__BCApps-5633"
@@ -44,6 +51,12 @@
 .EXAMPLE
     # Compare ALDC vs baseline
     .\Setup-ALDCEvaluation.ps1 -InstanceId "microsoft__BCApps-5633" -CompareBaseline
+.EXAMPLE
+    # Compare all 3 scenarios: baseline vs al-developer vs al-conductor (TDD)
+    .\Setup-ALDCEvaluation.ps1 -InstanceId "microsoft__BCApps-5633" -CompareAll
+.EXAMPLE
+    # Evaluate with TDD orchestration (al-conductor)
+    .\Setup-ALDCEvaluation.ps1 -InstanceId "microsoft__BCApps-5633" -AldcAgent "al-conductor" -Category "test-generation"
 .EXAMPLE
     # Use existing container and repo
     .\Setup-ALDCEvaluation.ps1 -InstanceId "microsoft__BCApps-5633" -SkipContainerSetup -SkipRepoClone -RepoPath "C:\testbed"
@@ -90,7 +103,14 @@ param(
     [switch]$SkipRepoClone,
 
     [Parameter(Mandatory = $false)]
-    [switch]$CompareBaseline
+    [switch]$CompareBaseline,
+
+    [Parameter(Mandatory = $false)]
+    [switch]$CompareAll,
+
+    [Parameter(Mandatory = $false)]
+    [ValidateSet("al-developer", "al-conductor")]
+    [string]$AldcAgent = "al-developer"
 )
 
 $ErrorActionPreference = "Stop"
@@ -118,7 +138,7 @@ function Write-Info { param([string]$Message) Write-Host "  [..] $Message" -Fore
 # STEP 1: VALIDATE PREREQUISITES
 # ============================================================================
 
-$totalSteps = if ($CompareBaseline) { 7 } else { 6 }
+$totalSteps = if ($CompareAll) { 8 } elseif ($CompareBaseline) { 7 } else { 6 }
 Write-Step "Validating prerequisites" -Step 1 -Total $totalSteps
 
 $errors = @()
@@ -422,158 +442,196 @@ if ($SkipContainerSetup) {
 }
 
 # ============================================================================
-# STEP 6: RUN EVALUATION WITH ALDC
+# EVALUATION HELPER FUNCTION
 # ============================================================================
 
-Write-Step "Running evaluation with ALDC enabled" -Step 6 -Total $totalSteps
-
+$configPath = Join-Path $ProjectRoot "src" "bcbench" "agent" "shared" "config.yaml"
+$configOriginal = Get-Content $configPath -Raw
 $password = $env:BC_CONTAINER_PASSWORD
-$aldcOutputDir = if ($CompareBaseline) { "${OutputDir}_aldc" } else { $OutputDir }
-
-Write-Info "Agent:     $Agent"
-Write-Info "Model:     $Model"
-Write-Info "Category:  $Category"
-Write-Info "AL MCP:    $AlMcp"
-Write-Info "Entries:   $($entries.Count)"
-Write-Info "Output:    $aldcOutputDir"
-Write-Info "ALDC:      ENABLED (instructions + skills + agents)"
-Write-Host ""
-
-$successCount = 0
-$failCount = 0
 $totalEntries = $entries.Count
 
-foreach ($entry in $entries) {
-    $idx = [array]::IndexOf($entries, $entry) + 1
-    Write-Info "[$idx/$totalEntries] Evaluating: $entry"
+# Tracks results per scenario for final summary
+$scenarioResults = @{}
 
-    $evalArgs = @(
-        "run", "bcbench", "evaluate", $Agent, $entry,
-        "--model", $Model,
-        "--category", $Category,
-        "--repo-path", $RepoPath,
-        "--output-dir", $aldcOutputDir,
-        "--container-name", $ContainerName,
-        "--username", $Username,
-        "--password", $password
+function Invoke-EvaluationScenario {
+    <#
+    .SYNOPSIS
+        Run BC-Bench evaluation with a specific config.yaml configuration.
+    .PARAMETER ScenarioName
+        Display name for this scenario (e.g., "ALDC + al-developer")
+    .PARAMETER ScenarioTag
+        Short tag for output directory suffix (e.g., "aldc_developer")
+    .PARAMETER InstructionsEnabled
+        Enable/disable ALDC instructions
+    .PARAMETER SkillsEnabled
+        Enable/disable ALDC skills
+    .PARAMETER AgentsEnabled
+        Enable/disable ALDC custom agents
+    .PARAMETER AgentName
+        ALDC agent name (e.g., "al-developer", "al-conductor")
+    #>
+    param(
+        [string]$ScenarioName,
+        [string]$ScenarioTag,
+        [bool]$InstructionsEnabled,
+        [bool]$SkillsEnabled,
+        [bool]$AgentsEnabled,
+        [string]$AgentName = "al-developer"
     )
-    if ($AlMcp) {
-        $evalArgs += "--al-mcp"
-    }
 
-    Push-Location $ProjectRoot
-    try {
-        $startTime = Get-Date
-        uv @evalArgs 2>&1 | ForEach-Object { Write-Host "    $_" }
+    $scenarioOutputDir = "${OutputDir}_${ScenarioTag}"
 
-        if ($LASTEXITCODE -eq 0) {
-            $elapsed = (Get-Date) - $startTime
-            Write-Success "$entry completed in $([math]::Round($elapsed.TotalMinutes, 1)) minutes"
-            $successCount++
-        } else {
-            Write-Err "$entry failed (exit code: $LASTEXITCODE)"
-            $failCount++
-        }
-    } catch {
-        Write-Err "$entry error: $($_.Exception.Message)"
-        $failCount++
-    } finally {
-        Pop-Location
-    }
-}
+    # Build config content with the desired settings
+    $instrValue = if ($InstructionsEnabled) { "true" } else { "false" }
+    $skillsValue = if ($SkillsEnabled) { "true" } else { "false" }
+    $agentsValue = if ($AgentsEnabled) { "true" } else { "false" }
 
-Write-Host ""
-Write-Info "ALDC Results: $successCount passed, $failCount failed out of $totalEntries"
+    $scenarioConfig = $configOriginal `
+        -replace '(instructions:\s*\n\s*enabled:\s*)\S+', "`${1}$instrValue" `
+        -replace '(skills:\s*\n\s*enabled:\s*)\S+', "`${1}$skillsValue" `
+        -replace '(agents:\s*\n\s*enabled:\s*)\S+', "`${1}$agentsValue" `
+        -replace '(agents:\s*\n\s*enabled:\s*\S+\s*\n\s*name:\s*)\S+', "`${1}$AgentName"
+    $scenarioConfig | Set-Content $configPath -Encoding UTF8
 
-# ============================================================================
-# STEP 7 (optional): RUN BASELINE COMPARISON (without ALDC)
-# ============================================================================
-
-if ($CompareBaseline) {
-    Write-Step "Running baseline evaluation (WITHOUT ALDC)" -Step 7 -Total $totalSteps
-
-    $baselineOutputDir = "${OutputDir}_baseline"
-    $configPath = Join-Path $ProjectRoot "src" "bcbench" "agent" "shared" "config.yaml"
-
-    # Read current config
-    $configContent = Get-Content $configPath -Raw
-
-    # Disable ALDC in config
-    Write-Info "Temporarily disabling ALDC in config.yaml..."
-    $baselineConfig = $configContent `
-        -replace '(instructions:\s*\n\s*enabled:\s*)true', '${1}false' `
-        -replace '(skills:\s*\n\s*enabled:\s*)true', '${1}false' `
-        -replace '(agents:\s*\n\s*enabled:\s*)true', '${1}false'
-    $baselineConfig | Set-Content $configPath -Encoding UTF8
-
-    Write-Info "ALDC:      DISABLED (baseline comparison)"
-    Write-Info "Output:    $baselineOutputDir"
+    Write-Info "Scenario:  $ScenarioName"
+    Write-Info "ALDC:      instructions=$InstructionsEnabled, skills=$SkillsEnabled, agents=$AgentsEnabled"
+    if ($AgentsEnabled) { Write-Info "Agent:     $AgentName" }
+    Write-Info "Output:    $scenarioOutputDir"
     Write-Host ""
 
-    $baselineSuccess = 0
-    $baselineFail = 0
+    $scenarioSuccess = 0
+    $scenarioFail = 0
 
-    foreach ($entry in $entries) {
-        $idx = [array]::IndexOf($entries, $entry) + 1
-        Write-Info "[$idx/$totalEntries] Baseline: $entry"
+    foreach ($entry in $script:entries) {
+        $idx = [array]::IndexOf($script:entries, $entry) + 1
+        Write-Info "[$idx/$script:totalEntries] $($ScenarioName): $entry"
 
         $evalArgs = @(
-            "run", "bcbench", "evaluate", $Agent, $entry,
-            "--model", $Model,
-            "--category", $Category,
-            "--repo-path", $RepoPath,
-            "--output-dir", $baselineOutputDir,
-            "--container-name", $ContainerName,
-            "--username", $Username,
-            "--password", $password
+            "run", "bcbench", "evaluate", $script:Agent, $entry,
+            "--model", $script:Model,
+            "--category", $script:Category,
+            "--repo-path", $script:RepoPath,
+            "--output-dir", $scenarioOutputDir,
+            "--container-name", $script:ContainerName,
+            "--username", $script:Username,
+            "--password", $script:password
         )
-        if ($AlMcp) {
+        if ($script:AlMcp) {
             $evalArgs += "--al-mcp"
         }
 
-        Push-Location $ProjectRoot
+        Push-Location $script:ProjectRoot
         try {
+            $startTime = Get-Date
             uv @evalArgs 2>&1 | ForEach-Object { Write-Host "    $_" }
+
             if ($LASTEXITCODE -eq 0) {
-                Write-Success "$entry baseline completed"
-                $baselineSuccess++
+                $elapsed = (Get-Date) - $startTime
+                Write-Success "$entry completed in $([math]::Round($elapsed.TotalMinutes, 1)) minutes"
+                $scenarioSuccess++
             } else {
-                Write-Err "$entry baseline failed"
-                $baselineFail++
+                Write-Err "$entry failed (exit code: $LASTEXITCODE)"
+                $scenarioFail++
             }
         } catch {
-            Write-Err "$entry baseline error: $($_.Exception.Message)"
-            $baselineFail++
+            Write-Err "$entry error: $($_.Exception.Message)"
+            $scenarioFail++
         } finally {
             Pop-Location
         }
     }
 
-    # Restore ALDC config
-    Write-Info "Restoring ALDC config..."
-    $configContent | Set-Content $configPath -Encoding UTF8
-
-    # Print comparison summary
-    $bar = "=" * 70
-    Write-Host "`n$bar" -ForegroundColor Magenta
-    Write-Host " COMPARISON SUMMARY" -ForegroundColor Magenta
-    Write-Host "$bar" -ForegroundColor Magenta
     Write-Host ""
-    Write-Host "  WITH ALDC:    $successCount / $totalEntries resolved" -ForegroundColor Green
-    Write-Host "  WITHOUT ALDC: $baselineSuccess / $totalEntries resolved" -ForegroundColor Yellow
-    Write-Host ""
-    Write-Host "  ALDC results:     $aldcOutputDir" -ForegroundColor White
-    Write-Host "  Baseline results: $baselineOutputDir" -ForegroundColor White
-    Write-Host ""
+    Write-Info "$ScenarioName Results: $scenarioSuccess passed, $scenarioFail failed out of $script:totalEntries"
 
-    # Aggregate results
-    Write-Info "Aggregating results..."
-    Push-Location $ProjectRoot
-    uv run bcbench result aggregate --input-dir $aldcOutputDir 2>&1 | ForEach-Object { Write-Host "    $_" }
-    uv run bcbench result aggregate --input-dir $baselineOutputDir 2>&1 | ForEach-Object { Write-Host "    $_" }
-    Pop-Location
+    # Store results for final summary
+    $script:scenarioResults[$ScenarioName] = @{
+        Success   = $scenarioSuccess
+        Fail      = $scenarioFail
+        OutputDir = $scenarioOutputDir
+    }
+}
 
-    Write-Host "$bar`n" -ForegroundColor Magenta
+# ============================================================================
+# STEP 6: RUN EVALUATION WITH ALDC
+# ============================================================================
+
+Write-Step "Running evaluation with ALDC + $AldcAgent" -Step 6 -Total $totalSteps
+
+Write-Info "Agent:     $Agent"
+Write-Info "Model:     $Model"
+Write-Info "Category:  $Category"
+Write-Info "AL MCP:    $AlMcp"
+Write-Info "ALDC:      $AldcAgent"
+Write-Info "Entries:   $($entries.Count)"
+Write-Host ""
+
+$primaryTag = if ($CompareAll) { "aldc_$($AldcAgent -replace '-','_')" } `
+    elseif ($CompareBaseline) { "aldc" } `
+    else { $OutputDir -replace '.*[/\\]', '' }
+
+if (-not $CompareBaseline -and -not $CompareAll) {
+    # Single scenario — use OutputDir directly
+    Invoke-EvaluationScenario `
+        -ScenarioName "ALDC + $AldcAgent" `
+        -ScenarioTag ($OutputDir -replace '.*[/\\]', '') `
+        -InstructionsEnabled $true `
+        -SkillsEnabled $true `
+        -AgentsEnabled $true `
+        -AgentName $AldcAgent
+} else {
+    Invoke-EvaluationScenario `
+        -ScenarioName "ALDC + $AldcAgent" `
+        -ScenarioTag "aldc_$($AldcAgent -replace '-','_')" `
+        -InstructionsEnabled $true `
+        -SkillsEnabled $true `
+        -AgentsEnabled $true `
+        -AgentName $AldcAgent
+}
+
+# ============================================================================
+# STEP 7 (optional): RUN BASELINE COMPARISON (without ALDC)
+# ============================================================================
+
+if ($CompareBaseline -or $CompareAll) {
+    Write-Step "Running baseline evaluation (WITHOUT ALDC)" -Step 7 -Total $totalSteps
+
+    Invoke-EvaluationScenario `
+        -ScenarioName "Baseline (no ALDC)" `
+        -ScenarioTag "baseline" `
+        -InstructionsEnabled $false `
+        -SkillsEnabled $false `
+        -AgentsEnabled $false
+}
+
+# ============================================================================
+# STEP 8 (optional): RUN TDD SCENARIO WITH al-conductor
+# ============================================================================
+
+if ($CompareAll) {
+    # Determine the other agent (if primary is al-developer, TDD is al-conductor, and vice versa)
+    $tddAgent = if ($AldcAgent -eq "al-developer") { "al-conductor" } else { "al-developer" }
+    $tddLabel = if ($tddAgent -eq "al-conductor") { "TDD Orchestration" } else { "Direct Implementation" }
+
+    Write-Step "Running $tddLabel evaluation (ALDC + $tddAgent)" -Step 8 -Total $totalSteps
+
+    Invoke-EvaluationScenario `
+        -ScenarioName "ALDC + $tddAgent ($tddLabel)" `
+        -ScenarioTag "aldc_$($tddAgent -replace '-','_')" `
+        -InstructionsEnabled $true `
+        -SkillsEnabled $true `
+        -AgentsEnabled $true `
+        -AgentName $tddAgent
+}
+
+# ============================================================================
+# RESTORE ORIGINAL CONFIG
+# ============================================================================
+
+if ($CompareBaseline -or $CompareAll) {
+    Write-Info "Restoring original config.yaml..."
+    $configOriginal | Set-Content $configPath -Encoding UTF8
+    Write-Success "Config restored"
 }
 
 # ============================================================================
@@ -588,16 +646,48 @@ Write-Host ""
 Write-Host "  Agent:     $Agent" -ForegroundColor White
 Write-Host "  Model:     $Model" -ForegroundColor White
 Write-Host "  Category:  $Category" -ForegroundColor White
-Write-Host "  ALDC:      Enabled" -ForegroundColor White
-Write-Host "  Entries:   $totalEntries ($successCount passed, $failCount failed)" -ForegroundColor White
-Write-Host "  Results:   $(Resolve-Path $aldcOutputDir -ErrorAction SilentlyContinue ?? $aldcOutputDir)" -ForegroundColor White
+Write-Host "  AL MCP:    $AlMcp" -ForegroundColor White
+Write-Host "  Entries:   $totalEntries" -ForegroundColor White
 Write-Host ""
 
-if (-not $CompareBaseline) {
-    Write-Host "  To compare with baseline, re-run with -CompareBaseline" -ForegroundColor Cyan
+if ($scenarioResults.Count -gt 1) {
+    Write-Host "  SCENARIO COMPARISON:" -ForegroundColor Magenta
+    Write-Host "  $("-" * 60)" -ForegroundColor Magenta
+    foreach ($scenario in $scenarioResults.GetEnumerator() | Sort-Object { $_.Value.Success } -Descending) {
+        $s = $scenario.Value
+        $pct = if ($totalEntries -gt 0) { [math]::Round(($s.Success / $totalEntries) * 100, 1) } else { 0 }
+        $color = if ($s.Success -eq ($scenarioResults.Values | Measure-Object -Property Success -Maximum).Maximum) { "Green" } else { "Yellow" }
+        Write-Host "    $($scenario.Key):" -ForegroundColor White -NoNewline
+        Write-Host " $($s.Success)/$totalEntries resolved ($pct%)" -ForegroundColor $color
+        Write-Host "      -> $($s.OutputDir)" -ForegroundColor DarkGray
+    }
+    Write-Host ""
+
+    # Aggregate all results
+    Write-Info "Aggregating results..."
+    Push-Location $ProjectRoot
+    foreach ($scenario in $scenarioResults.GetEnumerator()) {
+        $dir = $scenario.Value.OutputDir
+        if (Test-Path $dir) {
+            uv run bcbench result aggregate --input-dir $dir 2>&1 | ForEach-Object { Write-Host "    $_" }
+        }
+    }
+    Pop-Location
+} else {
+    $primary = $scenarioResults.GetEnumerator() | Select-Object -First 1
+    if ($primary) {
+        $s = $primary.Value
+        Write-Host "  ALDC:      $AldcAgent" -ForegroundColor White
+        Write-Host "  Resolved:  $($s.Success)/$totalEntries" -ForegroundColor White
+        Write-Host "  Results:   $($s.OutputDir)" -ForegroundColor White
+    }
 }
 
-Write-Host "  To aggregate results:" -ForegroundColor Cyan
-Write-Host "    uv run bcbench result aggregate --input-dir $aldcOutputDir" -ForegroundColor Cyan
+Write-Host ""
+if (-not $CompareBaseline -and -not $CompareAll) {
+    Write-Host "  To compare scenarios, re-run with:" -ForegroundColor Cyan
+    Write-Host "    -CompareBaseline   (2 scenarios: ALDC vs no-ALDC)" -ForegroundColor Cyan
+    Write-Host "    -CompareAll        (3 scenarios: baseline vs al-developer vs al-conductor)" -ForegroundColor Cyan
+}
 Write-Host ""
 Write-Host "$bar`n" -ForegroundColor Green
