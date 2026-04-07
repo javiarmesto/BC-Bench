@@ -259,7 +259,7 @@ if (-not $SkipContainerSetup) {
 }
 
 # Dataset
-$datasetPath = Join-Path $ProjectRoot "dataset" "bcbench.jsonl"
+$datasetPath = Join-Path (Join-Path $ProjectRoot "dataset") "bcbench.jsonl"
 if (Test-Path $datasetPath) {
     $entryCount = (Get-Content $datasetPath).Count
     Write-Success "Dataset found: $entryCount entries"
@@ -445,7 +445,7 @@ if ($SkipContainerSetup) {
 # EVALUATION HELPER FUNCTION
 # ============================================================================
 
-$configPath = Join-Path $ProjectRoot "src" "bcbench" "agent" "shared" "config.yaml"
+$configPath = Join-Path $ProjectRoot "src\bcbench\agent\shared\config.yaml"
 $configOriginal = Get-Content $configPath -Raw
 $password = $env:BC_CONTAINER_PASSWORD
 $totalEntries = $entries.Count
