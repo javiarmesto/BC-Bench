@@ -118,6 +118,50 @@ def result_summarize(
     summary.save(run_dir, summary_output)
 
 
+@result_app.command("aggregate")
+def result_aggregate(
+    input_dir: Annotated[Path, typer.Option("--input-dir", help="Directory containing evaluation results", exists=True, file_okay=False, dir_okay=True)],
+    dataset_path: DatasetPath = _config.paths.dataset_path,
+    result_pattern: Annotated[str, typer.Option(help="Pattern for the per instances result files")] = f"*{_config.file_patterns.result_pattern}",
+):
+    """
+    Aggregate evaluation results from a directory.
+
+    Scans the input directory (recursively) for result JSONL files, summarizes them, and prints a console report.
+    Unlike 'summarize', this does not require a specific run_id — it discovers all results automatically.
+    """
+    result_files = list(input_dir.rglob(result_pattern))
+    if not result_files:
+        logger.error(f"No result files matching '{result_pattern}' found in {input_dir}")
+        raise typer.Exit(code=1)
+
+    instance_pattern_regex = re.compile(_config.file_patterns.instance_pattern)
+    result_files = [f for f in result_files if instance_pattern_regex.match(f.stem)]
+
+    if not result_files:
+        logger.error(f"No instance-specific result files found in {input_dir}")
+        raise typer.Exit(code=1)
+
+    results: list[BaseEvaluationResult] = []
+    for results_path in result_files:
+        logger.info(f"Reading results from: {results_path}")
+        with open(results_path) as f:
+            results.extend(create_result_from_json(json.loads(line)) for line in f if line.strip())
+
+    if not results:
+        logger.error("No results found in the result files")
+        raise typer.Exit(code=1)
+
+    logger.info(f"Found {len(results)} result(s) across {len(result_files)} file(s)")
+
+    run_id = input_dir.name
+    write_bceval_results(results, input_dir, run_id, dataset_path)
+    create_console_summary(results)
+
+    summary = EvaluationResultSummary.from_results(results, run_id=run_id)
+    summary.save(input_dir, "evaluation_summary.json")
+
+
 def _get_combination_key(result: EvaluationResultSummary) -> tuple[str, str, str | None, str]:
     exp_key = None
     if result.experiment and not result.experiment.is_empty():

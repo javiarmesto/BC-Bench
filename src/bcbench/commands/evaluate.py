@@ -56,9 +56,7 @@ def evaluate_mini(
     logger.info(f"Loaded {entry_id} entry from dataset")
 
     run_dir: Path = output_dir / run_id
-    if run_dir.exists():
-        shutil.rmtree(run_dir)
-    run_dir.mkdir(parents=True)
+    run_dir.mkdir(parents=True, exist_ok=True)
 
     logger.info(f"Running evaluation on entry {entry_id} with mini-bc-agent")
 
@@ -114,9 +112,7 @@ def evaluate_copilot(
     logger.info(f"Loaded {entry_id} entry from dataset")
 
     run_dir: Path = output_dir / run_id
-    if run_dir.exists():
-        shutil.rmtree(run_dir)
-    run_dir.mkdir(parents=True)
+    run_dir.mkdir(parents=True, exist_ok=True)
 
     logger.info(f"Running evaluation on entry {entry_id} with GitHub Copilot CLI")
 
@@ -174,9 +170,7 @@ def evaluate_claude_code(
     logger.info(f"Loaded {entry_id} entry from dataset")
 
     run_dir: Path = output_dir / run_id
-    if run_dir.exists():
-        shutil.rmtree(run_dir)
-    run_dir.mkdir(parents=True)
+    run_dir.mkdir(parents=True, exist_ok=True)
 
     logger.info(f"Running evaluation on entry {entry_id} with Claude Code")
 

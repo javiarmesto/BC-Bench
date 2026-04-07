@@ -13,6 +13,7 @@ from bcbench.dataset.dataset_loader import load_dataset_entries
 from bcbench.dataset.reviewer import run_dataset_reviewer
 from bcbench.exceptions import ConfigurationError
 from bcbench.logger import get_logger
+from bcbench.types import EvaluationCategory
 
 logger = get_logger(__name__)
 _config = get_config()
@@ -42,6 +43,7 @@ def review_dataset(
 @dataset_app.command("list")
 def list_entries(
     dataset_path: DatasetPath = _config.paths.dataset_path,
+    category: Annotated[EvaluationCategory | None, typer.Option(help="Filter by evaluation category (accepted for compatibility, currently no-op)")] = None,
     github_output: Annotated[str | None, typer.Option(help="Write JSON output to GITHUB_OUTPUT with this key name")] = None,
     modified_only: Annotated[bool, typer.Option(help="Only list entries that have been modified in git diff")] = False,
     test_run: Annotated[bool, typer.Option(help="Indicate this is a test run (with 2 entries)")] = False,
