@@ -79,10 +79,10 @@ param(
     [string]$Agent = "claude",
 
     [Parameter(Mandatory = $false)]
-    [string]$ContainerName = $env:BC_CONTAINER_NAME ?? "bcbench",
+    [string]$ContainerName = $(if ($env:BC_CONTAINER_NAME) { $env:BC_CONTAINER_NAME } else { "bcbench" }),
 
     [Parameter(Mandatory = $false)]
-    [string]$Username = $env:BC_CONTAINER_USERNAME ?? "admin",
+    [string]$Username = $(if ($env:BC_CONTAINER_USERNAME) { $env:BC_CONTAINER_USERNAME } else { "admin" }),
 
     [Parameter(Mandatory = $false)]
     [string]$RepoPath,
