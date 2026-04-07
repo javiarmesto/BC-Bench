@@ -307,10 +307,10 @@ if ($InstanceId) {
 } elseif ($TestRun) {
     Write-Info "Test run mode: selecting 2 random entries"
     Push-Location $ProjectRoot
-    $listOutput = uv run bcbench dataset list --category $Category 2>&1
+    $listOutput = uv run bcbench dataset list --category $Category --test-run 2>&1
     Pop-Location
-    # Take first 2 entries
-    $entries = ($listOutput | Select-Object -First 2) -replace '^\s+', '' -replace '\s+$', ''
+    # Filter lines matching entry ID pattern (org__repo-number)
+    $entries = $listOutput | ForEach-Object { $_.Trim().TrimStart('- ') } | Where-Object { $_ -match '^\S+__\S+-\d+$' } | Select-Object -First 2
     Write-Info "Selected entries: $($entries -join ', ')"
 } else {
     Write-Info "Full run mode: all entries for category '$Category'"
