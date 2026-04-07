@@ -47,21 +47,23 @@ if (-not $RepoPath) {
 Write-Log "Using repository path: $RepoPath" -Level Info
 
 if (Test-Path $RepoPath) {
-    throw "Repository already exists at $RepoPath. This indicates the machine was not properly cleaned up from a previous run."
+    Write-Log "Repository already exists at $RepoPath — skipping clone." -Level Warning
 }
+else {
+    [hashtable] $cloneInfo = Get-RepoCloneInfo -Entry $entries[0]
+    [string] $commitSha = $entries[0].base_commit
 
-[hashtable] $cloneInfo = Get-RepoCloneInfo -Entry $entries[0]
-[string] $commitSha = $entries[0].base_commit
-
-Write-Log "Cloning repository $($entries[0].repo) to $RepoPath" -Level Info
-Invoke-GitCloneWithRetry -RepoUrl $cloneInfo.Url -Token $cloneInfo.Token -ClonePath $RepoPath -CommitSha $commitSha -SparseCheckoutPaths $cloneInfo.SparseCheckoutPaths
+    Write-Log "Cloning repository $($entries[0].repo) to $RepoPath" -Level Info
+    Invoke-GitCloneWithRetry -RepoUrl $cloneInfo.Url -Token $cloneInfo.Token -ClonePath $RepoPath -CommitSha $commitSha -SparseCheckoutPaths $cloneInfo.SparseCheckoutPaths
+}
 
 Import-Module BcContainerHelper -Force -DisableNameChecking
 
 Write-Log "Container name: $ContainerName" -Level Info
 
 if (Test-ContainerExists -containerName $ContainerName) {
-    throw "Container $ContainerName already exists. This indicates the machine was not properly cleaned up from a previous run."
+    Write-Log "Container $ContainerName already exists — removing it." -Level Warning
+    docker rm -f $ContainerName 2>$null
 }
 
 Write-Log "Creating container $ContainerName for version $Version..." -Level Info
