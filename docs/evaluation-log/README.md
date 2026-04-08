@@ -98,6 +98,78 @@ exercised during the run:
 but the host never loaded it. `skills_invoked: {}` is normal for simple
 bug-fix tasks but suspicious for test-generation runs with `al-conductor-bench`.
 
+## Running scenarios one at a time (avoiding API overload)
+
+If the Anthropic API returns `overloaded_error` during a back-to-back
+`-CompareAll` run, you can either:
+
+### Option A — Automatic pause between scenarios
+
+Let the script run all 3 scenarios back to back with a cooldown between each:
+
+```powershell
+cd C:\bcbench
+.\scripts\Setup-ALDCEvaluation.ps1 `
+    -InstanceId "microsoft__BCApps-5633" `
+    -CompareAll `
+    -PauseBetweenScenarios 180 `
+    -SkipContainerSetup -SkipRepoClone -RepoPath "C:\bcbench\testbed"
+```
+
+`-PauseBetweenScenarios 180` inserts a 3-minute `Start-Sleep` between
+scenarios. Try 120-300 seconds depending on how aggressive the overload
+is. `-CompareBaseline` also honors this flag.
+
+### Option B — Full manual control, one scenario per invocation
+
+Run each scenario as a separate top-level command. You decide when to fire
+the next one (e.g. wait until the previous finishes, check the API is
+responding, then paste the next command). This is the safest option when
+the API is really flaky.
+
+```powershell
+cd C:\bcbench
+
+# --- Scenario 1/3: Baseline (no ALDC) ---
+.\scripts\Setup-ALDCEvaluation.ps1 `
+    -InstanceId "microsoft__BCApps-5633" `
+    -Scenario baseline `
+    -SkipContainerSetup -SkipRepoClone -RepoPath "C:\bcbench\testbed"
+
+# --- Manual pause: wait ~3 minutes (or until the API feels healthy) ---
+
+# --- Scenario 2/3: ALDC + al-developer-bench ---
+.\scripts\Setup-ALDCEvaluation.ps1 `
+    -InstanceId "microsoft__BCApps-5633" `
+    -Scenario aldc-developer `
+    -SkipContainerSetup -SkipRepoClone -RepoPath "C:\bcbench\testbed"
+
+# --- Manual pause: wait ~3 minutes ---
+
+# --- Scenario 3/3: ALDC + al-conductor-bench (TDD orchestration) ---
+.\scripts\Setup-ALDCEvaluation.ps1 `
+    -InstanceId "microsoft__BCApps-5633" `
+    -Scenario aldc-conductor `
+    -SkipContainerSetup -SkipRepoClone -RepoPath "C:\bcbench\testbed"
+```
+
+Each invocation:
+- Reuses the same testbed and BC container (no re-clone, no rebuild)
+- Mutates `config.yaml` to the target scenario, runs the eval, then
+  restores `config.yaml` to its committed state
+- Writes its result to a dedicated output directory:
+  - `baseline` → `evaluation_results_baseline/...`
+  - `aldc-developer` → `evaluation_results_aldc_al_developer_bench/...`
+  - `aldc-conductor` → `evaluation_results_aldc_al_conductor_bench/...`
+
+After all three finish, aggregate and compare:
+
+```powershell
+uv run bcbench result aggregate --input-dir evaluation_results_baseline
+uv run bcbench result aggregate --input-dir evaluation_results_aldc_al_developer_bench
+uv run bcbench result aggregate --input-dir evaluation_results_aldc_al_conductor_bench
+```
+
 ## Running with GitHub Copilot CLI
 
 Copilot CLI is installed by `Setup-VM-Phase2.ps1` step 8. Before any

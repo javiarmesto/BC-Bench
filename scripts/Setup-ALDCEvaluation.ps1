@@ -39,9 +39,19 @@
     Run evaluation three times: baseline (no ALDC), ALDC + al-developer, ALDC + al-conductor (TDD).
     Best for test-generation category where TDD orchestration may outperform direct implementation.
 .PARAMETER AldcAgent
-    ALDC agent to use: "al-developer" (tactical, default) or "al-conductor" (TDD orchestration).
-    al-conductor delegates to subagents (planning, implementation, review) and enforces TDD.
-    Recommended: al-developer for bug-fix, al-conductor for test-generation.
+    ALDC agent to use: "al-developer-bench" (tactical, default) or "al-conductor-bench" (TDD orchestration).
+    al-conductor-bench delegates to subagents (planning, implementation, review) and enforces TDD.
+    Recommended: al-developer-bench for bug-fix, al-conductor-bench for test-generation.
+    Ignored when -Scenario is used.
+.PARAMETER Scenario
+    Run exactly one named scenario, ignoring -CompareBaseline/-CompareAll/-AldcAgent.
+    Values: "baseline", "aldc-developer", "aldc-conductor".
+    Use this when you want full manual control over scenario sequencing (e.g. to
+    insert long cooldowns between runs to avoid the Anthropic API "overloaded_error").
+.PARAMETER PauseBetweenScenarios
+    Seconds to wait between scenarios in -CompareBaseline/-CompareAll modes. Default: 0.
+    Useful when Anthropic returns "overloaded_error" — try 120-300 seconds.
+    Ignored in single-scenario mode (no second scenario to pause before).
 .EXAMPLE
     # Evaluate a single entry with ALDC
     .\Setup-ALDCEvaluation.ps1 -InstanceId "microsoft__BCApps-5633"
@@ -49,11 +59,16 @@
     # Quick test run (2 entries)
     .\Setup-ALDCEvaluation.ps1 -TestRun
 .EXAMPLE
-    # Compare ALDC vs baseline
+    # Compare ALDC vs baseline (back to back)
     .\Setup-ALDCEvaluation.ps1 -InstanceId "microsoft__BCApps-5633" -CompareBaseline
 .EXAMPLE
-    # Compare all 3 scenarios: baseline vs al-developer vs al-conductor (TDD)
-    .\Setup-ALDCEvaluation.ps1 -InstanceId "microsoft__BCApps-5633" -CompareAll
+    # Compare all 3 scenarios with 3-minute cooldowns between them
+    .\Setup-ALDCEvaluation.ps1 -InstanceId "microsoft__BCApps-5633" -CompareAll -PauseBetweenScenarios 180
+.EXAMPLE
+    # Run ONE scenario manually — lets you space runs by hand to avoid API overload
+    .\Setup-ALDCEvaluation.ps1 -InstanceId "microsoft__BCApps-5633" -Scenario baseline -SkipContainerSetup -SkipRepoClone -RepoPath "C:\bcbench\testbed"
+    .\Setup-ALDCEvaluation.ps1 -InstanceId "microsoft__BCApps-5633" -Scenario aldc-developer -SkipContainerSetup -SkipRepoClone -RepoPath "C:\bcbench\testbed"
+    .\Setup-ALDCEvaluation.ps1 -InstanceId "microsoft__BCApps-5633" -Scenario aldc-conductor -SkipContainerSetup -SkipRepoClone -RepoPath "C:\bcbench\testbed"
 .EXAMPLE
     # Evaluate with TDD orchestration (al-conductor)
     .\Setup-ALDCEvaluation.ps1 -InstanceId "microsoft__BCApps-5633" -AldcAgent "al-conductor-bench" -Category "test-generation"
@@ -110,7 +125,14 @@ param(
 
     [Parameter(Mandatory = $false)]
     [ValidateSet("al-developer-bench", "al-conductor-bench")]
-    [string]$AldcAgent = "al-developer-bench"
+    [string]$AldcAgent = "al-developer-bench",
+
+    [Parameter(Mandatory = $false)]
+    [ValidateSet("baseline", "aldc-developer", "aldc-conductor")]
+    [string]$Scenario,
+
+    [Parameter(Mandatory = $false)]
+    [int]$PauseBetweenScenarios = 0
 )
 
 $ErrorActionPreference = "Stop"
@@ -138,7 +160,13 @@ function Write-Info { param([string]$Message) Write-Host "  [..] $Message" -Fore
 # STEP 1: VALIDATE PREREQUISITES
 # ============================================================================
 
-$totalSteps = if ($CompareAll) { 8 } elseif ($CompareBaseline) { 7 } else { 6 }
+if ($Scenario) {
+    # Manual single-scenario mode overrides compare flags
+    $totalSteps = 6
+}
+elseif ($CompareAll) { $totalSteps = 8 }
+elseif ($CompareBaseline) { $totalSteps = 7 }
+else { $totalSteps = 6 }
 Write-Step "Validating prerequisites" -Step 1 -Total $totalSteps
 
 $errors = @()
@@ -581,87 +609,141 @@ function Invoke-EvaluationScenario {
 }
 
 # ============================================================================
-# STEP 6: RUN EVALUATION WITH ALDC
+# STEPS 6..8: RUN SCENARIOS
+#   - manual mode via -Scenario: runs exactly one named scenario
+#   - comparison mode via -CompareBaseline / -CompareAll: runs 2 or 3 scenarios
+#     back-to-back, with optional -PauseBetweenScenarios cooldown between them
+#     (useful when hitting Anthropic API "overloaded_error")
 # ============================================================================
 
-Write-Step "Running evaluation with ALDC + $AldcAgent" -Step 6 -Total $totalSteps
-
-Write-Info "Agent:     $Agent"
-Write-Info "Model:     $Model"
-Write-Info "Category:  $Category"
-Write-Info "AL MCP:    $AlMcp"
-Write-Info "ALDC:      $AldcAgent"
-Write-Info "Entries:   $($entries.Count)"
+Write-Host "`nAgent:     $Agent" -ForegroundColor Cyan
+Write-Host "Model:     $Model" -ForegroundColor Cyan
+Write-Host "Category:  $Category" -ForegroundColor Cyan
+Write-Host "AL MCP:    $AlMcp" -ForegroundColor Cyan
+Write-Host "Entries:   $($entries.Count)" -ForegroundColor Cyan
+if ($PauseBetweenScenarios -gt 0) {
+    Write-Host "Pause:     $PauseBetweenScenarios seconds between scenarios" -ForegroundColor Cyan
+}
 Write-Host ""
 
-$primaryTag = if ($CompareAll) { "aldc_$($AldcAgent -replace '-','_')" } `
-    elseif ($CompareBaseline) { "aldc" } `
-    else { $OutputDir -replace '.*[/\\]', '' }
+# Build the list of scenarios to run
+$scenariosToRun = @()
 
-if (-not $CompareBaseline -and -not $CompareAll) {
-    # Single scenario — use OutputDir directly
-    Invoke-EvaluationScenario `
-        -ScenarioName "ALDC + $AldcAgent" `
-        -ScenarioTag ($OutputDir -replace '.*[/\\]', '') `
-        -InstructionsEnabled $true `
-        -SkillsEnabled $true `
-        -AgentsEnabled $true `
-        -AgentName $AldcAgent
+if ($Scenario) {
+    # ---- Manual single-scenario mode ----
+    switch ($Scenario) {
+        "baseline" {
+            $scenariosToRun += [pscustomobject]@{
+                Name      = "Baseline (no ALDC)"
+                Tag       = "baseline"
+                Instr     = $false
+                Skills    = $false
+                Agents    = $false
+                AgentName = "al-developer-bench"  # placeholder — ignored when Agents=false
+            }
+        }
+        "aldc-developer" {
+            $scenariosToRun += [pscustomobject]@{
+                Name      = "ALDC + al-developer-bench"
+                Tag       = "aldc_al_developer_bench"
+                Instr     = $true
+                Skills    = $true
+                Agents    = $true
+                AgentName = "al-developer-bench"
+            }
+        }
+        "aldc-conductor" {
+            $scenariosToRun += [pscustomobject]@{
+                Name      = "ALDC + al-conductor-bench"
+                Tag       = "aldc_al_conductor_bench"
+                Instr     = $true
+                Skills    = $true
+                Agents    = $true
+                AgentName = "al-conductor-bench"
+            }
+        }
+    }
 }
 else {
-    Invoke-EvaluationScenario `
-        -ScenarioName "ALDC + $AldcAgent" `
-        -ScenarioTag "aldc_$($AldcAgent -replace '-','_')" `
-        -InstructionsEnabled $true `
-        -SkillsEnabled $true `
-        -AgentsEnabled $true `
-        -AgentName $AldcAgent
+    # ---- Comparison mode: primary + optional baseline + optional second agent ----
+    $primaryTag = if ($CompareBaseline -or $CompareAll) {
+        "aldc_$($AldcAgent -replace '-','_')"
+    }
+    else {
+        $OutputDir -replace '.*[/\\]', ''
+    }
+
+    $scenariosToRun += [pscustomobject]@{
+        Name      = "ALDC + $AldcAgent"
+        Tag       = $primaryTag
+        Instr     = $true
+        Skills    = $true
+        Agents    = $true
+        AgentName = $AldcAgent
+    }
+
+    if ($CompareBaseline -or $CompareAll) {
+        $scenariosToRun += [pscustomobject]@{
+            Name      = "Baseline (no ALDC)"
+            Tag       = "baseline"
+            Instr     = $false
+            Skills    = $false
+            Agents    = $false
+            AgentName = "al-developer-bench"  # placeholder
+        }
+    }
+
+    if ($CompareAll) {
+        # Primary is al-developer-bench -> second is al-conductor-bench, and vice versa
+        $tddAgent = if ($AldcAgent -eq "al-developer-bench") { "al-conductor-bench" } else { "al-developer-bench" }
+        $tddLabel = if ($tddAgent -eq "al-conductor-bench") { "TDD Orchestration" } else { "Direct Implementation" }
+
+        $scenariosToRun += [pscustomobject]@{
+            Name      = "ALDC + $tddAgent ($tddLabel)"
+            Tag       = "aldc_$($tddAgent -replace '-','_')"
+            Instr     = $true
+            Skills    = $true
+            Agents    = $true
+            AgentName = $tddAgent
+        }
+    }
 }
 
-# ============================================================================
-# STEP 7 (optional): RUN BASELINE COMPARISON (without ALDC)
-# ============================================================================
+# Run each scenario sequentially, with optional cooldown between
+$scenarioIndex = 0
+foreach ($sc in $scenariosToRun) {
+    $scenarioIndex++
+    $stepNumber = 5 + $scenarioIndex
 
-if ($CompareBaseline -or $CompareAll) {
-    Write-Step "Running baseline evaluation (WITHOUT ALDC)" -Step 7 -Total $totalSteps
+    # Cooldown before 2nd/3rd scenarios (not before the first)
+    if ($scenarioIndex -gt 1 -and $PauseBetweenScenarios -gt 0) {
+        Write-Host ""
+        Write-Info "Cooling down $PauseBetweenScenarios seconds before next scenario to avoid API rate limits..."
+        Start-Sleep -Seconds $PauseBetweenScenarios
+        Write-Info "Cooldown complete."
+    }
 
-    Invoke-EvaluationScenario `
-        -ScenarioName "Baseline (no ALDC)" `
-        -ScenarioTag "baseline" `
-        -InstructionsEnabled $false `
-        -SkillsEnabled $false `
-        -AgentsEnabled $false
-}
-
-# ============================================================================
-# STEP 8 (optional): RUN TDD SCENARIO WITH al-conductor
-# ============================================================================
-
-if ($CompareAll) {
-    # Determine the other agent (if primary is al-developer, TDD is al-conductor, and vice versa)
-    $tddAgent = if ($AldcAgent -eq "al-developer") { "al-conductor" } else { "al-developer" }
-    $tddLabel = if ($tddAgent -eq "al-conductor") { "TDD Orchestration" } else { "Direct Implementation" }
-
-    Write-Step "Running $tddLabel evaluation (ALDC + $tddAgent)" -Step 8 -Total $totalSteps
+    Write-Step "[$scenarioIndex/$($scenariosToRun.Count)] $($sc.Name)" -Step $stepNumber -Total $totalSteps
 
     Invoke-EvaluationScenario `
-        -ScenarioName "ALDC + $tddAgent ($tddLabel)" `
-        -ScenarioTag "aldc_$($tddAgent -replace '-','_')" `
-        -InstructionsEnabled $true `
-        -SkillsEnabled $true `
-        -AgentsEnabled $true `
-        -AgentName $tddAgent
+        -ScenarioName $sc.Name `
+        -ScenarioTag $sc.Tag `
+        -InstructionsEnabled $sc.Instr `
+        -SkillsEnabled $sc.Skills `
+        -AgentsEnabled $sc.Agents `
+        -AgentName $sc.AgentName
 }
 
 # ============================================================================
 # RESTORE ORIGINAL CONFIG
 # ============================================================================
 
-if ($CompareBaseline -or $CompareAll) {
-    Write-Info "Restoring original config.yaml..."
-    $configOriginal | Set-Content $configPath -Encoding UTF8
-    Write-Success "Config restored"
-}
+# Always restore the original config so subsequent runs start from a known state.
+# Invoke-EvaluationScenario mutates config.yaml in place, and any non-trivial scenario
+# (including single-scenario manual mode) leaves it modified.
+Write-Info "Restoring original config.yaml..."
+$configOriginal | Set-Content $configPath -Encoding UTF8
+Write-Success "Config restored"
 
 # ============================================================================
 # FINAL SUMMARY
