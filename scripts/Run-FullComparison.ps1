@@ -48,17 +48,17 @@ function Write-Header($msg) {
 }
 
 function Write-Step($msg) { Write-Host "  [..] $msg" -ForegroundColor Yellow }
-function Write-Ok($msg)   { Write-Host "  [OK] $msg" -ForegroundColor Green }
+function Write-Ok($msg) { Write-Host "  [OK] $msg" -ForegroundColor Green }
 function Write-Fail($msg) { Write-Host "  [!!] $msg" -ForegroundColor Red }
 
 # ── Scenario definitions ────────────────────────────────────────────────────
 $scenarios = @(
-    @{ Agent = "claude";  Scenario = "baseline";       Model = "claude-sonnet-4-6"; OutDir = "eval_claude_baseline" }
-    @{ Agent = "claude";  Scenario = "aldc-developer";  Model = "claude-sonnet-4-6"; OutDir = "eval_claude_aldc_developer" }
-    @{ Agent = "claude";  Scenario = "aldc-conductor";  Model = "claude-sonnet-4-6"; OutDir = "eval_claude_aldc_conductor" }
-    @{ Agent = "copilot"; Scenario = "baseline";       Model = "claude-sonnet-4.6"; OutDir = "eval_copilot_baseline" }
-    @{ Agent = "copilot"; Scenario = "aldc-developer";  Model = "claude-sonnet-4.6"; OutDir = "eval_copilot_aldc_developer" }
-    @{ Agent = "copilot"; Scenario = "aldc-conductor";  Model = "claude-sonnet-4.6"; OutDir = "eval_copilot_aldc_conductor" }
+    @{ Agent = "claude"; Scenario = "baseline"; Model = "claude-sonnet-4-6"; OutDir = "eval_claude_baseline" }
+    @{ Agent = "claude"; Scenario = "aldc-developer"; Model = "claude-sonnet-4-6"; OutDir = "eval_claude_aldc_developer" }
+    @{ Agent = "claude"; Scenario = "aldc-conductor"; Model = "claude-sonnet-4-6"; OutDir = "eval_claude_aldc_conductor" }
+    @{ Agent = "copilot"; Scenario = "baseline"; Model = "claude-sonnet-4.6"; OutDir = "eval_copilot_baseline" }
+    @{ Agent = "copilot"; Scenario = "aldc-developer"; Model = "claude-sonnet-4.6"; OutDir = "eval_copilot_aldc_developer" }
+    @{ Agent = "copilot"; Scenario = "aldc-conductor"; Model = "claude-sonnet-4.6"; OutDir = "eval_copilot_aldc_conductor" }
 )
 
 # ── Run evaluations ──────────────────────────────────────────────────────────
@@ -68,12 +68,12 @@ $results = @()
 $scriptPath = Join-Path $PSScriptRoot "Setup-ALDCEvaluation.ps1"
 $skipArgs = @()
 if ($SkipContainerSetup) { $skipArgs += "-SkipContainerSetup" }
-if ($SkipRepoClone)      { $skipArgs += "-SkipRepoClone" }
+if ($SkipRepoClone) { $skipArgs += "-SkipRepoClone" }
 
 for ($i = 0; $i -lt $scenarios.Count; $i++) {
     $s = $scenarios[$i]
 
-    if ($s.Agent -eq "claude"  -and $SkipClaude)  { continue }
+    if ($s.Agent -eq "claude" -and $SkipClaude) { continue }
     if ($s.Agent -eq "copilot" -and $SkipCopilot) { continue }
 
     Write-Header "[$($i+1)/$($scenarios.Count)] $($s.Agent.ToUpper()) — $($s.Scenario)"
@@ -91,7 +91,8 @@ for ($i = 0; $i -lt $scenarios.Count; $i++) {
             -OutputDir $outDir `
             @skipArgs
         $exitCode = $LASTEXITCODE
-    } catch {
+    }
+    catch {
         $exitCode = 1
         Write-Fail "Script threw: $_"
     }
@@ -107,7 +108,7 @@ for ($i = 0; $i -lt $scenarios.Count; $i++) {
     }
 
     if ($exitCode -eq 0) { Write-Ok "Completed in ${elapsed}m" }
-    else                 { Write-Fail "Failed (exit $exitCode) after ${elapsed}m" }
+    else { Write-Fail "Failed (exit $exitCode) after ${elapsed}m" }
 
     # Pause between scenarios (skip after the last one)
     if ($i -lt ($scenarios.Count - 1) -and $PauseBetweenScenarios -gt 0) {
@@ -120,7 +121,7 @@ for ($i = 0; $i -lt $scenarios.Count; $i++) {
 Write-Header "COLLECTING RESULTS"
 
 $safeInstance = $InstanceId -replace "__", "-" -replace "/", "-"
-$resultBase   = Join-Path $BcbenchRoot "notebooks/result/bug-fix"
+$resultBase = Join-Path $BcbenchRoot "notebooks/result/bug-fix"
 $dirMap = @{
     "eval_claude_baseline"        = "claude-baseline-sonnet-4-6"
     "eval_claude_aldc_developer"  = "claude-aldc-al-developer-bench-sonnet-4-6"
@@ -137,7 +138,8 @@ foreach ($key in $dirMap.Keys) {
         New-Item -ItemType Directory -Path $dst -Force | Out-Null
         Copy-Item $src $dst -ErrorAction SilentlyContinue
         Write-Ok "Copied $key → $($dirMap[$key])"
-    } else {
+    }
+    else {
         Write-Step "Skipped $key (not found)"
     }
 }
@@ -156,17 +158,17 @@ $reportRows = @()
 foreach ($key in $dirMap.Keys) {
     $r = Read-Result $dirMap[$key]
     if ($null -eq $r) { continue }
-    $agentLabel    = if ($key -like "eval_claude*")  { "Claude Code" } else { "GitHub Copilot" }
+    $agentLabel = if ($key -like "eval_claude*") { "Claude Code" } else { "GitHub Copilot" }
     $scenarioLabel = switch -Wildcard ($key) {
-        "*baseline*"        { "Baseline" }
-        "*aldc_developer*"  { "ALDC + al-developer-bench" }
-        "*aldc_conductor*"  { "ALDC + al-conductor-bench" }
+        "*baseline*" { "Baseline" }
+        "*aldc_developer*" { "ALDC + al-developer-bench" }
+        "*aldc_conductor*" { "ALDC + al-conductor-bench" }
     }
     $reportRows += [PSCustomObject]@{
         Agent    = $agentLabel
         Scenario = $scenarioLabel
         Resolved = if ($r.resolved) { "✅" } else { "❌" }
-        Build    = if ($r.build)    { "✅" } else { "❌" }
+        Build    = if ($r.build) { "✅" } else { "❌" }
         Turns    = $r.metrics.turn_count
         Time     = "$([int]$r.metrics.execution_time)s"
         Tokens   = [int](($r.metrics.prompt_tokens + $r.metrics.completion_tokens) / 1000)
@@ -186,8 +188,8 @@ foreach ($row in $reportRows) {
 $mdContent = @"
 # Evaluation Report: $InstanceId
 
-**Date:** $date  
-**Model:** claude-sonnet-4-6 (Claude) / claude-sonnet-4.6 (Copilot)  
+**Date:** $date
+**Model:** claude-sonnet-4-6 (Claude) / claude-sonnet-4.6 (Copilot)
 **Total time:** ~${totalElapsed} minutes
 
 ## Results
@@ -222,9 +224,11 @@ try {
     git commit -m "results: $InstanceId full comparison claude+copilot ($date)"
     git push origin $GitBranch
     Write-Ok "Pushed to $GitBranch"
-} catch {
+}
+catch {
     Write-Fail "Git push failed: $_"
-} finally {
+}
+finally {
     Pop-Location
 }
 
@@ -234,7 +238,8 @@ if ($EmailTo -ne "") {
     $gmailPass = $env:GMAIL_APP_PASSWORD
     if (-not $gmailPass) {
         Write-Fail "Set `$env:GMAIL_APP_PASSWORD (Gmail app password) to enable email"
-    } else {
+    }
+    else {
         try {
             $cred = [System.Management.Automation.PSCredential]::new(
                 "javiarmesto@gmail.com",
@@ -251,7 +256,8 @@ if ($EmailTo -ne "") {
                 -UseSsl `
                 -Credential $cred
             Write-Ok "Email sent to $EmailTo"
-        } catch {
+        }
+        catch {
             Write-Fail "Email failed: $_"
         }
     }
