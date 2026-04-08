@@ -1,6 +1,16 @@
 using module .\BCBenchUtils.psm1
 using module .\DatasetEntry.psm1
 
+# BcContainerHelper functions (Compile-AppInBcContainer, Publish-BcContainerApp,
+# Run-TestsInBcContainer) are called from inside this module's functions. When
+# this .psm1 is loaded as a module, its functions execute in their own module
+# scope, so symbols imported by the *caller* (the parent script) are NOT visible
+# here. The dependency must therefore be declared INSIDE this module to enter
+# its own session state. Without this import the build fails with
+#   "The term 'Compile-AppInBcContainer' is not recognized..."
+# even though the parent script imported BcContainerHelper at the top.
+Import-Module BcContainerHelper -Force -DisableNameChecking -ErrorAction Stop
+
 <#
     .Synopsis
     Compiles and publishes an app to a Business Central container with force sync.
