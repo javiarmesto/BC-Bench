@@ -148,29 +148,34 @@ if (Get-Command docker -ErrorAction SilentlyContinue) {
     $dockerInfo = docker info 2>&1
     if ($LASTEXITCODE -eq 0) {
         Write-Success "Docker is running"
-    } else {
+    }
+    else {
         $errors += "Docker daemon is not running. Start Docker Desktop or the Docker service."
     }
-} else {
+}
+else {
     $errors += "Docker is not installed. Install Docker Desktop with Hyper-V support."
 }
 
 # PowerShell 7+
 if ($PSVersionTable.PSVersion.Major -ge 7) {
     Write-Success "PowerShell $($PSVersionTable.PSVersion) detected"
-} else {
+}
+else {
     $errors += "PowerShell 7+ required. Current version: $($PSVersionTable.PSVersion)"
 }
 
 # Python / uv
 if (Get-Command uv -ErrorAction SilentlyContinue) {
     Write-Success "uv $(uv --version 2>&1) detected"
-} else {
+}
+else {
     Write-Warn "uv not found. Installing..."
     irm https://astral.sh/uv/install.ps1 | iex
     if (Get-Command uv -ErrorAction SilentlyContinue) {
         Write-Success "uv installed successfully"
-    } else {
+    }
+    else {
         $errors += "Failed to install uv. Install manually: https://docs.astral.sh/uv/getting-started/installation/"
     }
 }
@@ -178,14 +183,16 @@ if (Get-Command uv -ErrorAction SilentlyContinue) {
 # Node.js
 if (Get-Command node -ErrorAction SilentlyContinue) {
     Write-Success "Node.js $(node --version 2>&1) detected"
-} else {
+}
+else {
     $errors += "Node.js not found. Install from https://nodejs.org/"
 }
 
 # Git
 if (Get-Command git -ErrorAction SilentlyContinue) {
     Write-Success "Git $(git --version 2>&1) detected"
-} else {
+}
+else {
     $errors += "Git is not installed."
 }
 
@@ -194,12 +201,14 @@ if ($Agent -eq "claude") {
     $claudeCmd = Get-Command claude -ErrorAction SilentlyContinue
     if ($claudeCmd) {
         Write-Success "Claude Code detected at $($claudeCmd.Source)"
-    } else {
+    }
+    else {
         Write-Warn "Claude Code not found. Installing..."
         npm install -g @anthropic-ai/claude-code@2.1.69
         if (Get-Command claude -ErrorAction SilentlyContinue) {
             Write-Success "Claude Code installed"
-        } else {
+        }
+        else {
             $errors += "Failed to install Claude Code. Run: npm install -g @anthropic-ai/claude-code"
         }
     }
@@ -209,7 +218,8 @@ if ($Agent -eq "claude") {
 if ($Agent -eq "claude") {
     if ([string]::IsNullOrEmpty($env:ANTHROPIC_API_KEY)) {
         $errors += "ANTHROPIC_API_KEY environment variable is not set."
-    } else {
+    }
+    else {
         Write-Success "ANTHROPIC_API_KEY is set"
     }
 }
@@ -220,7 +230,8 @@ if ([string]::IsNullOrEmpty($env:BC_CONTAINER_PASSWORD) -and -not $SkipContainer
 
 if ([string]::IsNullOrEmpty($env:GITHUB_TOKEN)) {
     Write-Warn "GITHUB_TOKEN is not set. Required for cloning microsoft/BCApps."
-} else {
+}
+else {
     Write-Success "GITHUB_TOKEN is set"
 }
 
@@ -228,7 +239,8 @@ if ([string]::IsNullOrEmpty($env:GITHUB_TOKEN)) {
 if ($AlMcp) {
     if (Get-Command al -ErrorAction SilentlyContinue) {
         Write-Success "AL Tool (MCP) detected"
-    } else {
+    }
+    else {
         Write-Warn "AL Tool not found. Installing..."
         dotnet tool install -g Microsoft.Dynamics.BusinessCentral.Development.Tools --version 17.0.33.55542
         $toolsPath = Join-Path $env:USERPROFILE ".dotnet\tools"
@@ -237,7 +249,8 @@ if ($AlMcp) {
         }
         if (Get-Command al -ErrorAction SilentlyContinue) {
             Write-Success "AL Tool installed"
-        } else {
+        }
+        else {
             Write-Warn "AL Tool installation failed. --al-mcp may not work."
         }
     }
@@ -247,12 +260,14 @@ if ($AlMcp) {
 if (-not $SkipContainerSetup) {
     if (Get-Module -ListAvailable -Name BcContainerHelper) {
         Write-Success "BcContainerHelper module available"
-    } else {
+    }
+    else {
         Write-Warn "BcContainerHelper not found. Installing..."
         Install-Module -Name BcContainerHelper -Force -AllowClobber -AllowPrerelease -Scope CurrentUser
         if (Get-Module -ListAvailable -Name BcContainerHelper) {
             Write-Success "BcContainerHelper installed"
-        } else {
+        }
+        else {
             $errors += "Failed to install BcContainerHelper."
         }
     }
@@ -263,7 +278,8 @@ $datasetPath = Join-Path (Join-Path $ProjectRoot "dataset") "bcbench.jsonl"
 if (Test-Path $datasetPath) {
     $entryCount = (Get-Content $datasetPath).Count
     Write-Success "Dataset found: $entryCount entries"
-} else {
+}
+else {
     $errors += "Dataset not found at $datasetPath"
 }
 
@@ -290,7 +306,8 @@ Push-Location $ProjectRoot
 try {
     uv sync --all-groups 2>&1 | ForEach-Object { Write-Info $_ }
     Write-Success "Python dependencies installed"
-} finally {
+}
+finally {
     Pop-Location
 }
 
@@ -304,7 +321,8 @@ $bcbenchArgs = @()
 if ($InstanceId) {
     Write-Info "Single entry mode: $InstanceId"
     $entries = @($InstanceId)
-} elseif ($TestRun) {
+}
+elseif ($TestRun) {
     Write-Info "Test run mode: selecting 2 random entries"
     Push-Location $ProjectRoot
     $listOutput = uv run bcbench dataset list --category $Category --test-run 2>&1
@@ -312,7 +330,8 @@ if ($InstanceId) {
     # Filter lines matching entry ID pattern (org__repo-number)
     $entries = $listOutput | ForEach-Object { $_.Trim().TrimStart('- ') } | Where-Object { $_ -match '^\S+__\S+-\d+$' } | Select-Object -First 2
     Write-Info "Selected entries: $($entries -join ', ')"
-} else {
+}
+else {
     Write-Info "Full run mode: all entries for category '$Category'"
     Push-Location $ProjectRoot
     $listOutput = uv run bcbench dataset list --category $Category 2>&1
@@ -339,11 +358,13 @@ if (-not $RepoPath) {
 if ($SkipRepoClone) {
     if (Test-Path $RepoPath) {
         Write-Success "Using existing repository at $RepoPath"
-    } else {
+    }
+    else {
         Write-Err "Repository not found at $RepoPath (--SkipRepoClone was set)"
         exit 1
     }
-} else {
+}
+else {
     if (Test-Path $RepoPath) {
         Write-Warn "Removing existing testbed at $RepoPath"
         Remove-Item -Path $RepoPath -Recurse -Force
@@ -355,7 +376,7 @@ if ($SkipRepoClone) {
 
     # Read the first entry to determine repo and commit
     $firstEntry = Get-Content $datasetPath | ForEach-Object { $_ | ConvertFrom-Json } |
-        Where-Object { $_.instance_id -eq $entries[0] } | Select-Object -First 1
+    Where-Object { $_.instance_id -eq $entries[0] } | Select-Object -First 1
 
     if (-not $firstEntry) {
         Write-Err "Entry '$($entries[0])' not found in dataset"
@@ -376,7 +397,8 @@ if ($SkipRepoClone) {
         $cloneUrl = "https://github.com/$repoName.git"
         $token = $env:GITHUB_TOKEN
         $sparseCheckoutPaths = @()
-    } else {
+    }
+    else {
         $cloneUrl = 'https://dynamicssmb2.visualstudio.com/Dynamics%20SMB/_git/NAV'
         $token = $env:ADO_TOKEN
         $sparseCheckoutPaths = @('App/Apps', 'App/Layers')
@@ -408,11 +430,13 @@ if ($SkipContainerSetup) {
     $containerExists = docker ps -q -f name="$ContainerName" 2>$null
     if ($containerExists) {
         Write-Success "Using existing container '$ContainerName'"
-    } else {
+    }
+    else {
         Write-Err "Container '$ContainerName' not found (--SkipContainerSetup was set)"
         exit 1
     }
-} else {
+}
+else {
     # Check if container already exists
     $containerExists = docker ps -aq -f name="$ContainerName" 2>$null
     if ($containerExists) {
@@ -436,7 +460,8 @@ if ($SkipContainerSetup) {
         # The setup script handles version detection from the dataset entry
         & "$ScriptRoot\Setup-ContainerAndRepository.ps1" @setupArgs
         Write-Success "BC container '$ContainerName' created and initialized"
-    } finally {
+    }
+    finally {
         Pop-Location
     }
 }
@@ -529,14 +554,17 @@ function Invoke-EvaluationScenario {
                 $elapsed = (Get-Date) - $startTime
                 Write-Success "$entry completed in $([math]::Round($elapsed.TotalMinutes, 1)) minutes"
                 $scenarioSuccess++
-            } else {
+            }
+            else {
                 Write-Err "$entry failed (exit code: $LASTEXITCODE)"
                 $scenarioFail++
             }
-        } catch {
+        }
+        catch {
             Write-Err "$entry error: $($_.Exception.Message)"
             $scenarioFail++
-        } finally {
+        }
+        finally {
             Pop-Location
         }
     }
@@ -579,7 +607,8 @@ if (-not $CompareBaseline -and -not $CompareAll) {
         -SkillsEnabled $true `
         -AgentsEnabled $true `
         -AgentName $AldcAgent
-} else {
+}
+else {
     Invoke-EvaluationScenario `
         -ScenarioName "ALDC + $AldcAgent" `
         -ScenarioTag "aldc_$($AldcAgent -replace '-','_')" `
@@ -673,7 +702,8 @@ if ($scenarioResults.Count -gt 1) {
         }
     }
     Pop-Location
-} else {
+}
+else {
     $primary = $scenarioResults.GetEnumerator() | Select-Object -First 1
     if ($primary) {
         $s = $primary.Value
