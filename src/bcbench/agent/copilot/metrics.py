@@ -3,6 +3,7 @@ from collections import Counter
 from pathlib import Path
 from typing import Sequence
 
+from bcbench.agent.shared.aldc_usage import parse_aldc_usage
 from bcbench.logger import get_logger
 from bcbench.types import AgentMetrics
 
@@ -40,7 +41,7 @@ def parse_session_log(log_path: Path) -> tuple[dict[str, int], int]:
     return tool_usage, turn_count
 
 
-def parse_metrics(output_lines: Sequence[str], session_log_path: Path | None = None) -> AgentMetrics | None:
+def parse_metrics(output_lines: Sequence[str], session_log_path: Path | None = None, custom_agent: str | None = None) -> AgentMetrics | None:
     """Parse metrics from Copilot CLI output and session logs.
 
     This is highly delicate and depends on the exact formatting of the CLI output.
@@ -115,6 +116,8 @@ def parse_metrics(output_lines: Sequence[str], session_log_path: Path | None = N
             prompt_tokens = parse_token_count(input_str)
             completion_tokens = parse_token_count(output_str)
 
+        aldc_usage = parse_aldc_usage(session_log_path, custom_agent)
+
         if execution_time is not None or llm_duration is not None or prompt_tokens is not None or completion_tokens is not None or tool_usage is not None or turn_count is not None:
             return AgentMetrics(
                 execution_time=execution_time,
@@ -123,6 +126,7 @@ def parse_metrics(output_lines: Sequence[str], session_log_path: Path | None = N
                 prompt_tokens=prompt_tokens,
                 completion_tokens=completion_tokens,
                 tool_usage=tool_usage,
+                aldc_usage=aldc_usage,
             )
 
         logger.warning("No metrics found in output")

@@ -2,6 +2,7 @@ import re
 from collections import Counter
 from pathlib import Path
 
+from bcbench.agent.shared.aldc_usage import parse_aldc_usage
 from bcbench.logger import get_logger
 from bcbench.types import AgentMetrics
 
@@ -15,7 +16,7 @@ def parse_debug_log(log_path: Path) -> dict[str, int]:
     return dict(Counter(TOOL_USE_PATTERN.findall(content)))
 
 
-def parse_metrics(data: dict, debug_log_path: Path | None = None) -> AgentMetrics | None:
+def parse_metrics(data: dict, debug_log_path: Path | None = None, custom_agent: str | None = None) -> AgentMetrics | None:
     """Parse metrics from Claude Code result object.
 
     The Claude Code CLI outputs JSON when run with --output-format json.
@@ -79,6 +80,8 @@ def parse_metrics(data: dict, debug_log_path: Path | None = None) -> AgentMetric
         except Exception as e:
             logger.warning(f"Failed to parse tool usage from {debug_log_path}: {e}")
 
+    aldc_usage = parse_aldc_usage(debug_log_path, custom_agent)
+
     if any(v is not None for v in [execution_time, llm_duration, turn_count, prompt_tokens, completion_tokens]):
         return AgentMetrics(
             execution_time=execution_time,
@@ -87,6 +90,7 @@ def parse_metrics(data: dict, debug_log_path: Path | None = None) -> AgentMetric
             prompt_tokens=prompt_tokens,
             completion_tokens=completion_tokens,
             tool_usage=tool_usage,
+            aldc_usage=aldc_usage,
         )
 
     logger.warning("No metrics found in Claude Code output")

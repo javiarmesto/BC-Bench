@@ -103,7 +103,7 @@ def run_copilot_agent(
         session_logs = list(output_dir.glob("process-*.log"))
         session_log_path = max(session_logs, key=lambda p: p.stat().st_mtime) if session_logs else None
 
-        metrics = parse_metrics(stderr_lines, session_log_path=session_log_path)
+        metrics = parse_metrics(stderr_lines, session_log_path=session_log_path, custom_agent=custom_agent)
 
         return metrics, config
     except subprocess.TimeoutExpired:
