@@ -42,7 +42,7 @@ function Write-Step { param([string]$Msg, [int]$N, [int]$Total) Write-Host "`n[$
 function Write-Ok { param([string]$Msg) Write-Host "  OK: $Msg" -ForegroundColor Green }
 function Write-Skip { param([string]$Msg) Write-Host "  SKIP: $Msg" -ForegroundColor DarkGray }
 
-$totalSteps = 13
+$totalSteps = 14
 
 Write-Host "============================================" -ForegroundColor Cyan
 Write-Host " BC-Bench VM Setup — Phase 2 (software)" -ForegroundColor Cyan
@@ -127,8 +127,21 @@ if (Get-Command claude -ErrorAction SilentlyContinue) {
     Write-Ok "Claude Code 2.1.69 installed"
 }
 
-# ---- 8. BcContainerHelper ----
-Write-Step "Installing BcContainerHelper" 8 $totalSteps
+# ---- 8. GitHub Copilot CLI ----
+Write-Step "Installing GitHub Copilot CLI" 8 $totalSteps
+$copilotCmd = Get-Command copilot.cmd -ErrorAction SilentlyContinue
+if (-not $copilotCmd) { $copilotCmd = Get-Command copilot -ErrorAction SilentlyContinue }
+if ($copilotCmd) {
+    Write-Skip "Copilot CLI already installed at $($copilotCmd.Source)"
+} else {
+    npm install -g @github/copilot
+    Write-Ok "Copilot CLI installed"
+    Write-Host "  NOTE: Run 'copilot auth login' interactively after this script finishes." -ForegroundColor Yellow
+    Write-Host "        Required for any -Agent copilot evaluation runs." -ForegroundColor Yellow
+}
+
+# ---- 9. BcContainerHelper ----
+Write-Step "Installing BcContainerHelper" 9 $totalSteps
 if (Get-Module -ListAvailable -Name BcContainerHelper) {
     Write-Skip "BcContainerHelper already installed"
 } else {
@@ -136,8 +149,8 @@ if (Get-Module -ListAvailable -Name BcContainerHelper) {
     Write-Ok "BcContainerHelper installed"
 }
 
-# ---- 9. AL Tool (for AL MCP server) ----
-Write-Step "Installing AL Tool (.NET tool)" 9 $totalSteps
+# ---- 10. AL Tool (for AL MCP server) ----
+Write-Step "Installing AL Tool (.NET tool)" 10 $totalSteps
 if (Get-Command al -ErrorAction SilentlyContinue) {
     Write-Skip "AL Tool already installed"
 } else {
@@ -150,8 +163,8 @@ if (Get-Command al -ErrorAction SilentlyContinue) {
     Write-Ok "AL Tool installed"
 }
 
-# ---- 10. Environment variables ----
-Write-Step "Configuring environment variables" 10 $totalSteps
+# ---- 11. Environment variables ----
+Write-Step "Configuring environment variables" 11 $totalSteps
 $envVars = @{
     "ANTHROPIC_API_KEY"     = $AnthropicApiKey
     "GITHUB_TOKEN"          = $GitHubToken
@@ -165,8 +178,8 @@ foreach ($kv in $envVars.GetEnumerator()) {
 }
 Write-Ok "Environment variables set (ANTHROPIC_API_KEY, GITHUB_TOKEN, BC_CONTAINER_*)"
 
-# ---- 11. Clone BC-Bench ----
-Write-Step "Cloning BC-Bench repository" 11 $totalSteps
+# ---- 12. Clone BC-Bench ----
+Write-Step "Cloning BC-Bench repository" 12 $totalSteps
 $repoPath = "C:\bcbench"
 if (Test-Path $repoPath) {
     Write-Skip "BC-Bench already cloned at $repoPath"
@@ -178,15 +191,15 @@ if (Test-Path $repoPath) {
     Write-Ok "BC-Bench cloned and checked out to $Branch"
 }
 
-# ---- 12. Install Python dependencies ----
-Write-Step "Installing Python dependencies (uv sync)" 12 $totalSteps
+# ---- 13. Install Python dependencies ----
+Write-Step "Installing Python dependencies (uv sync)" 13 $totalSteps
 Push-Location $repoPath
 uv sync --all-groups
 Pop-Location
 Write-Ok "Python dependencies installed"
 
-# ---- 13. Verify everything ----
-Write-Step "Final verification" 13 $totalSteps
+# ---- 14. Verify everything ----
+Write-Step "Final verification" 14 $totalSteps
 
 $checks = @(
     @{ Name = "Docker";            Cmd = { docker info 2>$null | Out-Null; $LASTEXITCODE -eq 0 } },
@@ -195,6 +208,7 @@ $checks = @(
     @{ Name = "uv";                Cmd = { $null -ne (Get-Command uv -EA SilentlyContinue) } },
     @{ Name = "Node.js";           Cmd = { $null -ne (Get-Command node -EA SilentlyContinue) } },
     @{ Name = "Claude Code";       Cmd = { $null -ne (Get-Command claude -EA SilentlyContinue) } },
+    @{ Name = "Copilot CLI";       Cmd = { ($null -ne (Get-Command copilot.cmd -EA SilentlyContinue)) -or ($null -ne (Get-Command copilot -EA SilentlyContinue)) } },
     @{ Name = "BcContainerHelper"; Cmd = { $null -ne (Get-Module -ListAvailable -Name BcContainerHelper) } },
     @{ Name = "ANTHROPIC_API_KEY"; Cmd = { -not [string]::IsNullOrEmpty($env:ANTHROPIC_API_KEY) } },
     @{ Name = "GITHUB_TOKEN";      Cmd = { -not [string]::IsNullOrEmpty($env:GITHUB_TOKEN) } },
@@ -220,6 +234,9 @@ if ($failed -eq 0) {
     Write-Host " Next steps:" -ForegroundColor Cyan
     Write-Host "   cd C:\bcbench" -ForegroundColor White
     Write-Host "   .\scripts\Setup-ALDCEvaluation.ps1 -TestRun -Category 'bug-fix'" -ForegroundColor White
+    Write-Host ""
+    Write-Host " For Copilot CLI runs (-Agent copilot), authenticate first:" -ForegroundColor Cyan
+    Write-Host "   copilot auth login" -ForegroundColor White
     Write-Host ""
 } else {
     Write-Host "============================================" -ForegroundColor Red
