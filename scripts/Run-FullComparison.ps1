@@ -68,7 +68,7 @@ $results = @()
 $scriptPath = Join-Path $PSScriptRoot "Setup-ALDCEvaluation.ps1"
 $skipArgs = @{}
 if ($SkipContainerSetup) { $skipArgs["SkipContainerSetup"] = $true }
-if ($SkipRepoClone)      { $skipArgs["SkipRepoClone"] = $true }
+if ($SkipRepoClone) { $skipArgs["SkipRepoClone"] = $true }
 
 for ($i = 0; $i -lt $scenarios.Count; $i++) {
     $s = $scenarios[$i]
