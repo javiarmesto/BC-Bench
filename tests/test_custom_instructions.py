@@ -11,9 +11,11 @@ from bcbench.config import get_config
 from bcbench.dataset import DatasetEntry
 from bcbench.operations.instruction_operations import (
     _get_source_instructions_path,
+    build_aldc_evidence,
     setup_custom_agent,
     setup_instructions_from_config,
 )
+from bcbench.operations.skills_operations import setup_agent_skills
 from bcbench.types import AgentType
 
 _config = get_config()
@@ -265,3 +267,68 @@ def test_copilot_agent_paths_not_rewritten():
             # Source file has .github/plans/ refs, should be preserved for Copilot
             conductor_text = conductor_file.read_text(encoding="utf-8")
             assert ".github/plans/" in conductor_text, "Copilot runs should preserve .github/plans/ refs"
+
+
+def test_aldc_evidence_snapshot_after_full_setup():
+    """build_aldc_evidence should record every file laid down with a SHA-256 hash."""
+    with TemporaryDirectory() as tmpdir:
+        repo_path = Path(tmpdir)
+        entry = MagicMock(spec=DatasetEntry)
+        entry.repo = "microsoft/BCApps"
+        config = {
+            "instructions": {"enabled": True},
+            "skills": {"enabled": True},
+            "agents": {"enabled": True, "name": "al-developer-bench"},
+        }
+
+        setup_instructions_from_config(config, entry, repo_path, agent_type=AgentType.CLAUDE)
+        setup_agent_skills(config, entry, repo_path, agent_type=AgentType.CLAUDE)
+        setup_custom_agent(config, entry, repo_path, agent_type=AgentType.CLAUDE)
+
+        evidence = build_aldc_evidence(
+            repo_path,
+            AgentType.CLAUDE,
+            agent_flag="al-developer-bench",
+            instructions_enabled=True,
+        )
+
+        # Top-level shape
+        assert evidence.target_dir == ".claude"
+        assert evidence.agent_flag == "al-developer-bench"
+        assert len(evidence.files) > 0, "Snapshot should contain files"
+
+        # CLAUDE.md, at least one skill SKILL.md, and at least one agent .md must be present
+        paths = {f.path for f in evidence.files}
+        assert "CLAUDE.md" in paths, "CLAUDE.md should be recorded"
+        assert any(p.startswith("skills/") and p.endswith("SKILL.md") for p in paths), "at least one skill should be present"
+        assert any(p.startswith("agents/") and p.endswith(".md") for p in paths), "at least one agent should be present"
+
+        # Every entry has a non-empty hash and a positive byte count
+        for f in evidence.files:
+            assert len(f.sha256) == 64, f"sha256 should be 64 hex chars, got {f.sha256!r}"
+            assert f.bytes > 0, f"empty file recorded: {f.path}"
+
+        # Rules-inlining workaround should have fired
+        assert evidence.rules_inlined is True
+        assert evidence.rules_inlined_count >= 1, "at least one rule should be inlined"
+
+        # Path rewrite workaround should have fired (developer-bench mentions skills, conductor mentions plans)
+        assert evidence.paths_rewritten is True
+
+
+def test_aldc_evidence_empty_when_setup_skipped():
+    """If instructions were never copied, evidence should be empty but valid."""
+    with TemporaryDirectory() as tmpdir:
+        repo_path = Path(tmpdir)
+        evidence = build_aldc_evidence(
+            repo_path,
+            AgentType.CLAUDE,
+            agent_flag=None,
+            instructions_enabled=False,
+        )
+        assert evidence.target_dir == ".claude"
+        assert evidence.agent_flag is None
+        assert evidence.files == []
+        assert evidence.rules_inlined is False
+        assert evidence.rules_inlined_count == 0
+        assert evidence.paths_rewritten is False

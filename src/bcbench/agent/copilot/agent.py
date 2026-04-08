@@ -14,6 +14,7 @@ from bcbench.dataset import DatasetEntry
 from bcbench.exceptions import AgentError, AgentTimeoutError
 from bcbench.logger import get_logger
 from bcbench.operations import setup_agent_skills, setup_custom_agent, setup_instructions_from_config
+from bcbench.operations.instruction_operations import build_aldc_evidence
 from bcbench.types import AgentMetrics, AgentType, EvaluationCategory, ExperimentConfiguration
 
 logger = get_logger(__name__)
@@ -38,11 +39,22 @@ def run_copilot_agent(
     instructions_enabled: bool = setup_instructions_from_config(copilot_config, entry, repo_path, agent_type=AgentType.COPILOT)
     skills_enabled: bool = setup_agent_skills(copilot_config, entry, repo_path, agent_type=AgentType.COPILOT)
     custom_agent: str | None = setup_custom_agent(copilot_config, entry, repo_path, agent_type=AgentType.COPILOT)
+    aldc_evidence = build_aldc_evidence(
+        repo_path,
+        AgentType.COPILOT,
+        agent_flag=custom_agent,
+        instructions_enabled=instructions_enabled,
+    )
     config = ExperimentConfiguration(
         mcp_servers=mcp_server_names,
         custom_instructions=instructions_enabled,
         skills_enabled=skills_enabled,
         custom_agent=custom_agent,
+        aldc_evidence=aldc_evidence,
+    )
+    logger.info(
+        f"ALDC evidence: target={aldc_evidence.target_dir}, files={len(aldc_evidence.files)}, "
+        f"rules_inlined={aldc_evidence.rules_inlined_count}, paths_rewritten={aldc_evidence.paths_rewritten}"
     )
 
     logger.info(f"Executing Copilot CLI in directory: {repo_path}")

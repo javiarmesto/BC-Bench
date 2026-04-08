@@ -1,10 +1,11 @@
+import hashlib
 from pathlib import Path
 from shutil import copytree, rmtree
 
 from bcbench.config import get_config
 from bcbench.dataset import DatasetEntry
 from bcbench.logger import get_logger
-from bcbench.types import AgentType
+from bcbench.types import ALDCEvidence, ALDCFileEntry, AgentType
 
 logger = get_logger(__name__)
 _config = get_config()
@@ -199,3 +200,86 @@ def copy_problem_statement_folder(entry: DatasetEntry, repo_path: Path) -> None:
 
     copytree(source_dir, dest_dir)
     logger.info(f"Copied problem statement folder from {source_dir} to {dest_dir}")
+
+
+def build_aldc_evidence(
+    repo_path: Path,
+    agent_type: AgentType,
+    *,
+    agent_flag: str | None,
+    instructions_enabled: bool,
+) -> ALDCEvidence:
+    """Snapshot the ALDC files placed in the testbed for audit purposes.
+
+    Walks the agent's target directory (`.claude/` or `.github/`) and computes
+    a SHA-256 hash of every file. The result is stored alongside the run so a
+    reviewer can later prove which exact ALDC bytes the model was given —
+    instead of having to trust that the boolean flags in
+    ExperimentConfiguration reflect what actually landed on disk.
+
+    Returns an ALDCEvidence with `files=[]` if the target dir does not exist
+    (instructions disabled, or evidence collected before setup ran).
+    """
+    target_dir: Path = agent_type.get_target_dir(repo_path)
+
+    files: list[ALDCFileEntry] = []
+    rules_inlined = False
+    rules_inlined_count = 0
+    paths_rewritten = False
+
+    if target_dir.exists() and target_dir.is_dir():
+        for file_path in sorted(target_dir.rglob("*")):
+            if not file_path.is_file():
+                continue
+            try:
+                data = file_path.read_bytes()
+            except OSError as e:
+                logger.warning(f"Could not read {file_path} for ALDC evidence: {e}")
+                continue
+            files.append(
+                ALDCFileEntry(
+                    path=str(file_path.relative_to(target_dir)).replace("\\", "/"),
+                    sha256=hashlib.sha256(data).hexdigest(),
+                    bytes=len(data),
+                )
+            )
+
+        # Detect whether the rules-inlining workaround actually fired
+        root_instructions = target_dir / agent_type.instruction_filename
+        if root_instructions.exists():
+            try:
+                root_text = root_instructions.read_text(encoding="utf-8")
+                if "# Coding Rules (auto-loaded)" in root_text:
+                    rules_inlined = True
+                    rules_inlined_count = root_text.count("\n## Rule file: `")
+            except OSError:
+                pass
+
+        # Detect whether the .github -> .claude path rewrite was applied
+        if agent_type == AgentType.CLAUDE:
+            agents_dir = target_dir / "agents"
+            if agents_dir.exists():
+                rewritten = False
+                for agent_file in agents_dir.glob("*.md"):
+                    try:
+                        body = agent_file.read_text(encoding="utf-8")
+                        if ".claude/plans/" in body or ".claude/skills/" in body:
+                            rewritten = True
+                            break
+                    except OSError:
+                        continue
+                paths_rewritten = rewritten
+
+    if not files and instructions_enabled:
+        logger.warning(
+            f"ALDC evidence is empty but instructions were enabled — target dir {target_dir} missing or unreadable"
+        )
+
+    return ALDCEvidence(
+        target_dir=target_dir.name,
+        agent_flag=agent_flag,
+        rules_inlined=rules_inlined,
+        rules_inlined_count=rules_inlined_count,
+        paths_rewritten=paths_rewritten,
+        files=files,
+    )
