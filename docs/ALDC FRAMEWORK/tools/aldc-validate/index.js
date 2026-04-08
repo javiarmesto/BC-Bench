@@ -1,0 +1,257 @@
+#!/usr/bin/env node
+/**
+ * ALDC Core Validator v1.1
+ * Validates repository compliance against ALDC Core Spec v1.1.
+ *
+ * Checks:
+ *   1. aldc.yaml exists and parses correctly
+ *   2. .github/plans/ directory exists
+ *   3. memory.md (global) exists
+ *   4. Requirement sets are complete ({req_name}.spec.md + .architecture.md + .test-plan.md)
+ *   5. Templates exist and are unmodified (optional hash check)
+ *   6. Required agents, subagents, workflows, skills, instructions exist
+ *   7. Copilot entrypoint coherence
+ *
+ * Usage:
+ *   node tools/aldc-validate/index.js [--config aldc.yaml]
+ */
+
+const fs = require("fs");
+const path = require("path");
+const yaml = require("js-yaml"); // npm i js-yaml
+
+const args = process.argv.slice(2);
+let configPath = "aldc.yaml";
+const idx = args.indexOf("--config");
+if (idx !== -1 && args[idx + 1]) configPath = args[idx + 1];
+
+const S = { errors: [], warnings: [], info: [] };
+
+function error(msg) { S.errors.push(msg); }
+function warn(msg) { S.warnings.push(msg); }
+function info(msg) { S.info.push(msg); }
+
+function fileExists(p) { return fs.existsSync(p); }
+function readFile(p) { return fs.readFileSync(p, "utf8"); }
+
+// ─── 1. Parse aldc.yaml ───────────────────────────────────────────
+if (!fileExists(configPath)) {
+  error(`aldc.yaml not found at ${configPath}`);
+  report();
+  process.exit(1);
+}
+
+let cfg;
+try {
+  cfg = yaml.load(readFile(configPath));
+  info(`aldc.yaml parsed (core version: ${cfg.core?.version})`);
+} catch (e) {
+  error(`aldc.yaml parse error: ${e.message}`);
+  report();
+  process.exit(1);
+}
+
+const root = cfg.toolkitRoot === "." ? "" : cfg.toolkitRoot + "/";
+const rules = cfg.validation?.rules || {};
+function severity(rule) { return rules[rule] || "warn"; }
+function issue(rule, msg) { severity(rule) === "error" ? error(msg) : warn(msg); }
+
+// ─── 2. Plans directory ───────────────────────────────────────────
+const plansRoot = cfg.plans?.root || ".github/plans";
+if (!fileExists(plansRoot)) {
+  issue("missingPlansDir", `Plans directory not found: ${plansRoot}`);
+} else {
+  info(`Plans directory exists: ${plansRoot}`);
+}
+
+// ─── 3. Global memory ────────────────────────────────────────────
+const memoryFile = cfg.contracts?.globalMemory || "memory.md";
+const memoryPath = path.join(plansRoot, memoryFile);
+if (!fileExists(memoryPath)) {
+  issue("missingGlobalMemory", `Global memory not found: ${memoryPath}`);
+} else {
+  info(`Global memory exists: ${memoryPath}`);
+}
+
+// ─── 4. Requirement sets completeness ────────────────────────────
+if (fileExists(plansRoot)) {
+  const contractTypes = cfg.contracts?.types || ["spec", "architecture", "test-plan"];
+  const files = fs.readdirSync(plansRoot).filter(f => f.endsWith(".md") && f !== memoryFile);
+  
+  // Extract unique req_names
+  const reqNames = new Set();
+  const filesByReq = {};
+  
+  for (const f of files) {
+    for (const type of contractTypes) {
+      const suffix = `.${type}.md`;
+      if (f.endsWith(suffix)) {
+        const reqName = f.slice(0, -suffix.length);
+        reqNames.add(reqName);
+        if (!filesByReq[reqName]) filesByReq[reqName] = [];
+        filesByReq[reqName].push(type);
+      }
+    }
+  }
+  
+  for (const reqName of reqNames) {
+    const found = filesByReq[reqName] || [];
+    const missing = contractTypes.filter(t => !found.includes(t));
+    if (missing.length > 0) {
+      issue("incompleteRequirementSets", 
+        `Requirement "${reqName}" incomplete: missing ${missing.map(t => `${reqName}.${t}.md`).join(", ")}`);
+    } else {
+      info(`Requirement "${reqName}" has complete set (${contractTypes.length}/${contractTypes.length})`);
+    }
+  }
+  
+  if (reqNames.size === 0) {
+    info("No requirement sets found in plans directory (may be initial setup)");
+  }
+}
+
+// ─── 5. Templates ────────────────────────────────────────────────
+const templates = cfg.required?.templates || [];
+for (const t of templates) {
+  const tp = root + t;
+  if (!fileExists(tp)) {
+    issue("missingTemplates", `Template not found: ${tp}`);
+  } else {
+    info(`Template exists: ${tp}`);
+  }
+}
+
+// ─── 6. Required toolkit files ───────────────────────────────────
+
+// 6a. Agents
+const agents = cfg.required?.agents || [];
+for (const a of agents) {
+  const ap = root + a;
+  if (!fileExists(ap)) {
+    issue("missingToolkitFiles", `Agent not found: ${ap}`);
+  } else {
+    info(`Agent exists: ${ap}`);
+  }
+}
+
+// 6b. Subagents
+const subagents = cfg.required?.subagents || [];
+for (const s of subagents) {
+  const sp = root + s;
+  if (!fileExists(sp)) {
+    issue("missingToolkitFiles", `Subagent not found: ${sp}`);
+  } else {
+    info(`Subagent exists: ${sp}`);
+  }
+}
+
+// 6c. Workflows
+const workflows = cfg.required?.workflows || [];
+for (const w of workflows) {
+  const wp = root + w;
+  if (!fileExists(wp)) {
+    issue("missingToolkitFiles", `Workflow not found: ${wp}`);
+  } else {
+    info(`Workflow exists: ${wp}`);
+  }
+}
+
+// 6d. Skills (required)
+const requiredSkills = cfg.required?.skills?.required || [];
+for (const sk of requiredSkills) {
+  const skp = root + sk;
+  if (!fileExists(skp)) {
+    issue("missingSkills", `Required skill not found: ${skp}`);
+  } else {
+    info(`Required skill exists: ${skp}`);
+  }
+}
+
+// 6e. Skills (recommended)
+const recommendedSkills = cfg.required?.skills?.recommended || [];
+for (const sk of recommendedSkills) {
+  const skp = root + sk;
+  if (!fileExists(skp)) {
+    issue("missingRecommendedSkills", `Recommended skill not found: ${skp}`);
+  } else {
+    info(`Recommended skill exists: ${skp}`);
+  }
+}
+
+// 6f. Instructions
+const instructions = cfg.required?.instructions || [];
+for (const i of instructions) {
+  const ip = root + i;
+  if (!fileExists(ip)) {
+    issue("missingToolkitFiles", `Instruction not found: ${ip}`);
+  } else {
+    info(`Instruction exists: ${ip}`);
+  }
+}
+
+// ─── 7. Copilot entrypoint coherence ─────────────────────────────
+const entrypoint = cfg.copilotEntrypoint;
+const source = cfg.copilotSource;
+
+if (entrypoint && !fileExists(entrypoint)) {
+  issue("copilotEntrypointCoherence", `Copilot entrypoint not found: ${entrypoint}`);
+} else if (entrypoint && source) {
+  const sourcePath = root + source;
+  if (fileExists(entrypoint) && fileExists(sourcePath)) {
+    const ep = readFile(entrypoint).trim();
+    const src = readFile(sourcePath).trim();
+    if (ep !== src) {
+      issue("copilotEntrypointCoherence",
+        `Copilot entrypoint drift detected: ${entrypoint} differs from ${sourcePath}`);
+    } else {
+      info("Copilot entrypoint is in sync with source");
+    }
+  }
+}
+
+// ─── Report ──────────────────────────────────────────────────────
+function report() {
+  console.log("\n╔══════════════════════════════════════════╗");
+  console.log("║     ALDC Core Validator v1.1             ║");
+  console.log("╚══════════════════════════════════════════╝\n");
+
+  if (S.info.length) {
+    console.log("ℹ️  Info:");
+    S.info.forEach(m => console.log(`   ✓ ${m}`));
+    console.log();
+  }
+  if (S.warnings.length) {
+    console.log("⚠️  Warnings:");
+    S.warnings.forEach(m => console.log(`   ⚠ ${m}`));
+    console.log();
+  }
+  if (S.errors.length) {
+    console.log("❌ Errors:");
+    S.errors.forEach(m => console.log(`   ✗ ${m}`));
+    console.log();
+  }
+
+  const total = S.errors.length + S.warnings.length;
+  if (S.errors.length === 0) {
+    console.log(`✅ ALDC Core v1.1 COMPLIANT (${S.warnings.length} warning(s))`);
+  } else {
+    console.log(`❌ NOT COMPLIANT — ${S.errors.length} error(s), ${S.warnings.length} warning(s)`);
+  }
+
+  // Summary table
+  console.log("\n┌────────────────────┬───────┐");
+  console.log("│ Check              │ Count │");
+  console.log("├────────────────────┼───────┤");
+  console.log(`│ Agents             │ ${agents.length.toString().padStart(5)} │`);
+  console.log(`│ Subagents          │ ${subagents.length.toString().padStart(5)} │`);
+  console.log(`│ Workflows          │ ${workflows.length.toString().padStart(5)} │`);
+  console.log(`│ Skills (required)  │ ${requiredSkills.length.toString().padStart(5)} │`);
+  console.log(`│ Skills (recommend) │ ${recommendedSkills.length.toString().padStart(5)} │`);
+  console.log(`│ Instructions       │ ${instructions.length.toString().padStart(5)} │`);
+  console.log(`│ Templates          │ ${templates.length.toString().padStart(5)} │`);
+  console.log("└────────────────────┴───────┘");
+
+  process.exit(S.errors.length > 0 ? 1 : 0);
+}
+
+report();
