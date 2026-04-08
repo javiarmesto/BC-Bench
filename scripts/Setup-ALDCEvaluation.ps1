@@ -87,9 +87,9 @@ param(
 
     [Parameter(Mandatory = $false)]
     [ValidateSet("claude-sonnet-4-6", "claude-opus-4-6", "claude-haiku-4-5",
-                 "claude-sonnet-4.5", "claude-sonnet-4.6", "claude-haiku-4.5",
-                 "claude-opus-4.5", "claude-opus-4.6", "claude-opus-4.6-fast",
-                 "gpt-5.4", "gpt-5.3-codex", "gpt-5.2-codex", "gpt-5.2", "gpt-4.1")]
+        "claude-sonnet-4.5", "claude-sonnet-4.6", "claude-haiku-4.5",
+        "claude-opus-4.5", "claude-opus-4.6", "claude-opus-4.6-fast",
+        "gpt-5.4", "gpt-5.3-codex", "gpt-5.2-codex", "gpt-5.2", "gpt-4.1")]
     [string]$Model = "claude-sonnet-4-6",
 
     [Parameter(Mandatory = $false)]
