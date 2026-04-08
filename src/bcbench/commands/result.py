@@ -155,7 +155,7 @@ def result_aggregate(
     logger.info(f"Found {len(results)} result(s) across {len(result_files)} file(s)")
 
     run_id = input_dir.name
-    write_bceval_results(results, input_dir, run_id, dataset_path)
+    write_bceval_results(results, input_dir, run_id, dataset_path, "bceval_results.jsonl")
     create_console_summary(results)
 
     summary = EvaluationResultSummary.from_results(results, run_id=run_id)
