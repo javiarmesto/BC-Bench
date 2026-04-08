@@ -14,9 +14,64 @@ from bcbench.logger import get_logger
 if TYPE_CHECKING:
     from bcbench.dataset import DatasetEntry
 
-__all__ = ["AgentMetrics", "AgentType", "EvaluationCategory", "EvaluationContext", "ExperimentConfiguration"]
+__all__ = ["ALDCEvidence", "ALDCFileEntry", "ALDCUsage", "AgentMetrics", "AgentType", "EvaluationCategory", "EvaluationContext", "ExperimentConfiguration"]
 
 logger = get_logger(__name__)
+
+
+class ALDCFileEntry(BaseModel):
+    """A single file recorded in the ALDC setup evidence snapshot."""
+
+    model_config = ConfigDict(frozen=True)
+
+    # Path relative to the ALDC target dir (e.g. "CLAUDE.md", "skills/skill-api/SKILL.md")
+    path: str
+    # SHA-256 hex digest of the file contents
+    sha256: str
+    # File size in bytes
+    bytes: int
+
+
+class ALDCEvidence(BaseModel):
+    """Hard proof that the ALDC package was laid down in the testbed correctly.
+
+    This is collected immediately after setup_instructions/skills/custom_agent
+    finishes copying files, and stored with the evaluation result so runs can
+    be audited after the fact. Without this, the only signal that ALDC was
+    enabled is a handful of booleans in ExperimentConfiguration.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    # ".claude" or ".github" — which host's target dir was populated
+    target_dir: str
+    # Agent name that was passed via --agent=... CLI flag (None if no custom agent)
+    agent_flag: str | None = None
+    # True if the rule files were successfully inlined into the root instructions
+    rules_inlined: bool = False
+    # Number of rule files concatenated into CLAUDE.md/copilot-instructions.md
+    rules_inlined_count: int = 0
+    # True if `.github/` -> `.claude/` path rewrites were applied to agent files
+    paths_rewritten: bool = False
+    # Full list of files in target_dir with hashes (sorted by path)
+    files: list[ALDCFileEntry] = []
+
+
+class ALDCUsage(BaseModel):
+    """Evidence that ALDC components were actually invoked during the run.
+
+    Parsed from the agent's debug log after execution completes. Distinguishes
+    "ALDC was available" from "ALDC was exercised".
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    # Skill name -> invocation count (parsed from tool calls)
+    skills_invoked: dict[str, int] = {}
+    # Subagent name -> delegation count (al-planning-subagent, al-review-subagent, etc.)
+    subagents_invoked: dict[str, int] = {}
+    # True if the debug log contains a reference to the custom agent name
+    custom_agent_confirmed: bool = False
 
 
 class AgentMetrics(BaseModel):
@@ -40,6 +95,9 @@ class AgentMetrics(BaseModel):
     # Tool usage statistics from agent logs
     tool_usage: dict[str, int] | None = None
 
+    # ALDC runtime usage (populated from debug log post-run)
+    aldc_usage: ALDCUsage | None = None
+
 
 class ExperimentConfiguration(BaseModel):
     """Configuration for agent experiment execution.
@@ -61,6 +119,9 @@ class ExperimentConfiguration(BaseModel):
 
     # Custom agent name used in experiment (if any)
     custom_agent: str | None = None
+
+    # Hard evidence of the ALDC files that were placed in the testbed
+    aldc_evidence: ALDCEvidence | None = None
 
     def is_empty(self) -> bool:
         """Check if this configuration has all default/empty values.
