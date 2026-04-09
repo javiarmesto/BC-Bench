@@ -110,10 +110,16 @@ for ($i = 0; $i -lt $scenarios.Count; $i++) {
     if ($exitCode -eq 0) { Write-Ok "Completed in ${elapsed}m" }
     else { Write-Fail "Failed (exit $exitCode) after ${elapsed}m" }
 
-    # Pause between scenarios (skip after the last one)
-    if ($i -lt ($scenarios.Count - 1) -and $PauseBetweenScenarios -gt 0) {
-        Write-Step "Pausing $PauseBetweenScenarios seconds..."
-        Start-Sleep -Seconds $PauseBetweenScenarios
+    # Clean up BC containers and unlock testbed between scenarios
+    if ($i -lt ($scenarios.Count - 1)) {
+        Write-Step "Stopping BC containers to release testbed lock..."
+        docker ps -aq | ForEach-Object { docker rm -f $_ 2>$null }
+        Start-Sleep -Seconds 3
+
+        if ($PauseBetweenScenarios -gt 0) {
+            Write-Step "Pausing $PauseBetweenScenarios seconds..."
+            Start-Sleep -Seconds $PauseBetweenScenarios
+        }
     }
 }
 
