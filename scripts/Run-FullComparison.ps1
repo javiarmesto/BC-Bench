@@ -129,25 +129,31 @@ Write-Header "COLLECTING RESULTS"
 $safeInstance = $InstanceId -replace "__", "-" -replace "/", "-"
 $resultBase = Join-Path $BcbenchRoot "notebooks/result/bug-fix"
 $dirMap = @{
-    "eval_claude_baseline"        = "claude-baseline-sonnet-4-6"
-    "eval_claude_aldc_developer"  = "claude-aldc-al-developer-bench-sonnet-4-6"
-    "eval_claude_aldc_conductor"  = "claude-aldc-al-conductor-bench-sonnet-4-6"
-    "eval_copilot_baseline"       = "copilot-baseline-sonnet-4-6"
-    "eval_copilot_aldc_developer" = "copilot-aldc-al-developer-bench-sonnet-4-6"
-    "eval_copilot_aldc_conductor" = "copilot-aldc-al-conductor-bench-sonnet-4-6"
+    "eval_claude_baseline_baseline"                                  = "claude-baseline-sonnet-4-6"
+    "eval_claude_aldc_developer_aldc_al_developer_bench"             = "claude-aldc-al-developer-bench-sonnet-4-6"
+    "eval_claude_aldc_conductor_aldc_al_conductor_bench"             = "claude-aldc-al-conductor-bench-sonnet-4-6"
+    "eval_copilot_baseline_baseline"                                 = "copilot-baseline-sonnet-4-6"
+    "eval_copilot_aldc_developer_aldc_al_developer_bench"            = "copilot-aldc-al-developer-bench-sonnet-4-6"
+    "eval_copilot_aldc_conductor_aldc_al_conductor_bench"            = "copilot-aldc-al-conductor-bench-sonnet-4-6"
 }
 
 foreach ($key in $dirMap.Keys) {
-    $src = Join-Path $BcbenchRoot "$key\claude_code_test_run\*.jsonl"
-    $dst = Join-Path $resultBase $dirMap[$key]
-    if (Test-Path (Join-Path $BcbenchRoot $key)) {
-        New-Item -ItemType Directory -Path $dst -Force | Out-Null
-        Copy-Item $src $dst -ErrorAction SilentlyContinue
-        Write-Ok "Copied $key → $($dirMap[$key])"
-    }
-    else {
+    $srcDir = Join-Path $BcbenchRoot $key
+    if (-not (Test-Path $srcDir)) {
         Write-Step "Skipped $key (not found)"
+        continue
     }
+    # Support both claude_code_test_run and copilot_test_run subdirs
+    $subDir = Get-ChildItem $srcDir -Directory | Select-Object -First 1
+    if ($null -eq $subDir) {
+        Write-Step "Skipped $key (no subdir)"
+        continue
+    }
+    $src = Join-Path $subDir.FullName "*.jsonl"
+    $dst = Join-Path $resultBase $dirMap[$key]
+    New-Item -ItemType Directory -Path $dst -Force | Out-Null
+    Copy-Item $src $dst -ErrorAction SilentlyContinue
+    Write-Ok "Copied $key ($($subDir.Name)) → $($dirMap[$key])"
 }
 
 # ── Parse JSONL for report ───────────────────────────────────────────────────
