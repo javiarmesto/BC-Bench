@@ -84,7 +84,7 @@ for ($i = 0; $i -lt $scenarios.Count; $i++) {
 
     if ($OnlyMissing) {
         $existingDir = Get-ChildItem $BcbenchRoot -Directory -ErrorAction SilentlyContinue |
-            Where-Object { $_.Name -like "$($s.OutDir)*" } | Select-Object -First 1
+        Where-Object { $_.Name -like "$($s.OutDir)*" } | Select-Object -First 1
         if ($existingDir) {
             $hit = Get-ChildItem $existingDir.FullName -Recurse -Filter "$InstanceId.jsonl" -ErrorAction SilentlyContinue
             if ($hit) {
