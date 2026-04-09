@@ -1,8 +1,9 @@
 <#
 .SYNOPSIS
     Run all evaluation scenarios for Claude and GitHub Copilot, collect results, generate report, and push to repo.
-.PARAMETER InstanceId
-    Dataset entry to evaluate. Default: "microsoft__BCApps-5633"
+.PARAMETER InstanceIds
+    One or more dataset entry IDs to evaluate. Instances sharing the same env_version reuse the BC container.
+    Default: "microsoft__BCApps-5633"
 .PARAMETER RepoPath
     Path to the testbed repository. Default: C:\bcbench\testbed
 .PARAMETER BcbenchRoot
@@ -26,10 +27,10 @@
 .PARAMETER AutoShutdown
     Shut down the machine after all scenarios, collect and push are done (and email sent).
 .EXAMPLE
-    .\Run-FullComparison.ps1 -InstanceId "microsoft__BCApps-4822" -OnlyMissing -EmailTo "you@gmail.com" -AutoShutdown
+    .\Run-FullComparison.ps1 -InstanceIds "microsoft__BCApps-4822","microsoftInternal__NAV-213629" -OnlyMissing -EmailTo "you@gmail.com" -AutoShutdown
 #>
 param(
-    [string]$InstanceId = "microsoft__BCApps-5633",
+    [string[]]$InstanceIds = @("microsoft__BCApps-5633"),
     [string]$RepoPath = "C:\bcbench\testbed",
     [string]$BcbenchRoot = "C:\bcbench",
     [string]$GitBranch = "claude/explain-repo-usage-2rL3g",
@@ -46,6 +47,18 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 $StartTime = Get-Date
+
+# ── Load env_version per instance from dataset ───────────────────────────────
+$envVersions = @{}
+$datasetPath = Join-Path $BcbenchRoot "dataset/bcbench.jsonl"
+if (Test-Path $datasetPath) {
+    foreach ($line in (Get-Content $datasetPath)) {
+        $entry = $line | ConvertFrom-Json
+        if ($InstanceIds -contains $entry.instance_id) {
+            $envVersions[$entry.instance_id] = $entry.environment_setup_version
+        }
+    }
+}
 
 function Write-Header($msg) {
     Write-Host "`n$('=' * 70)" -ForegroundColor Cyan
@@ -68,75 +81,90 @@ $scenarios = @(
 )
 
 # ── Run evaluations ──────────────────────────────────────────────────────────
-Write-Header "RUNNING $($scenarios.Count) SCENARIOS FOR $InstanceId"
+Write-Header "RUNNING $($scenarios.Count) SCENARIOS × $($InstanceIds.Count) INSTANCES"
 
 $results = @()
 $scriptPath = Join-Path $PSScriptRoot "Setup-ALDCEvaluation.ps1"
-$skipArgs = @{}
-if ($SkipContainerSetup) { $skipArgs["SkipContainerSetup"] = $true }
-if ($SkipRepoClone) { $skipArgs["SkipRepoClone"] = $true }
+$baseSkipArgs = @{}
+if ($SkipContainerSetup) { $baseSkipArgs["SkipContainerSetup"] = $true }
+if ($SkipRepoClone) { $baseSkipArgs["SkipRepoClone"] = $true }
 
-for ($i = 0; $i -lt $scenarios.Count; $i++) {
-    $s = $scenarios[$i]
+$prevEnvVersion = $null
+$instanceCount = $InstanceIds.Count
 
-    if ($s.Agent -eq "claude" -and $SkipClaude) { continue }
-    if ($s.Agent -eq "copilot" -and $SkipCopilot) { continue }
+for ($instIdx = 0; $instIdx -lt $instanceCount; $instIdx++) {
+    $InstanceId = $InstanceIds[$instIdx]
+    $envVersion = $envVersions[$InstanceId]
+    Write-Header "INSTANCE [$($instIdx+1)/$instanceCount]: $InstanceId  (BC $envVersion)"
 
-    if ($OnlyMissing) {
-        $existingDir = Get-ChildItem $BcbenchRoot -Directory -ErrorAction SilentlyContinue |
-        Where-Object { $_.Name -like "$($s.OutDir)*" } | Select-Object -First 1
-        if ($existingDir) {
-            $hit = Get-ChildItem $existingDir.FullName -Recurse -Filter "$InstanceId.jsonl" -ErrorAction SilentlyContinue
-            if ($hit) {
-                Write-Ok "[$($i+1)] Skipping $($s.Agent) $($s.Scenario) — result already exists"
-                continue
+    for ($i = 0; $i -lt $scenarios.Count; $i++) {
+        $s = $scenarios[$i]
+
+        if ($s.Agent -eq "claude" -and $SkipClaude) { continue }
+        if ($s.Agent -eq "copilot" -and $SkipCopilot) { continue }
+
+        if ($OnlyMissing) {
+            $existingDir = Get-ChildItem $BcbenchRoot -Directory -ErrorAction SilentlyContinue |
+                Where-Object { $_.Name -like "$($s.OutDir)*" } | Select-Object -First 1
+            if ($existingDir) {
+                $hit = Get-ChildItem $existingDir.FullName -Recurse -Filter "$InstanceId.jsonl" -ErrorAction SilentlyContinue
+                if ($hit) {
+                    Write-Ok "  Skipping $($s.Agent) $($s.Scenario) — result already exists"
+                    continue
+                }
             }
         }
-    }
 
-    Write-Header "[$($i+1)/$($scenarios.Count)] $($s.Agent.ToUpper()) — $($s.Scenario)"
+        Write-Header "[$($instIdx+1)/$instanceCount] $InstanceId | $($s.Agent.ToUpper()) — $($s.Scenario)"
 
-    $outDir = Join-Path $BcbenchRoot $s.OutDir
-    $t0 = Get-Date
+        # Reuse container across instances if same BC version
+        $runSkipArgs = $baseSkipArgs.Clone()
+        if ($null -ne $prevEnvVersion -and $prevEnvVersion -eq $envVersion -and -not $SkipContainerSetup) {
+            $runSkipArgs["SkipContainerSetup"] = $true
+        }
 
-    try {
-        & $scriptPath `
-            -InstanceId $InstanceId `
-            -Agent $s.Agent `
-            -Model $s.Model `
-            -Scenario $s.Scenario `
-            -RepoPath $RepoPath `
-            -OutputDir $outDir `
-            @skipArgs
-        $exitCode = $LASTEXITCODE
-    }
-    catch {
-        $exitCode = 1
-        Write-Fail "Script threw: $_"
-    }
+        $outDir = Join-Path $BcbenchRoot $s.OutDir
+        $t0 = Get-Date
 
-    $elapsed = [int]((Get-Date) - $t0).TotalMinutes
-    $results += [PSCustomObject]@{
-        Agent    = $s.Agent
-        Scenario = $s.Scenario
-        Model    = $s.Model
-        OutDir   = $outDir
-        ExitCode = $exitCode
-        Minutes  = $elapsed
-    }
+        try {
+            & $scriptPath `
+                -InstanceId $InstanceId `
+                -Agent $s.Agent `
+                -Model $s.Model `
+                -Scenario $s.Scenario `
+                -RepoPath $RepoPath `
+                -OutputDir $outDir `
+                @runSkipArgs
+            $exitCode = $LASTEXITCODE
+        }
+        catch {
+            $exitCode = 1
+            Write-Fail "Script threw: $_"
+        }
 
-    if ($exitCode -eq 0) { Write-Ok "Completed in ${elapsed}m" }
-    else { Write-Fail "Failed (exit $exitCode) after ${elapsed}m" }
+        $prevEnvVersion = $envVersion
+        $elapsed = [int]((Get-Date) - $t0).TotalMinutes
+        $results += [PSCustomObject]@{
+            Instance = $InstanceId
+            Agent    = $s.Agent
+            Scenario = $s.Scenario
+            ExitCode = $exitCode
+            Minutes  = $elapsed
+        }
 
-    # Clean up BC containers and unlock testbed between scenarios
-    if ($i -lt ($scenarios.Count - 1)) {
-        Write-Step "Stopping BC containers to release testbed lock..."
-        docker ps -aq | ForEach-Object { docker rm -f $_ 2>$null }
-        Start-Sleep -Seconds 3
+        if ($exitCode -eq 0) { Write-Ok "Completed in ${elapsed}m" }
+        else { Write-Fail "Failed (exit $exitCode) after ${elapsed}m" }
 
-        if ($PauseBetweenScenarios -gt 0) {
-            Write-Step "Pausing $PauseBetweenScenarios seconds..."
-            Start-Sleep -Seconds $PauseBetweenScenarios
+        # Clean up BC containers and unlock testbed between runs
+        $isLastRun = ($instIdx -eq $instanceCount - 1) -and ($i -eq $scenarios.Count - 1)
+        if (-not $isLastRun) {
+            Write-Step "Cleaning BC containers..."
+            docker ps -aq | ForEach-Object { docker rm -f $_ 2>$null }
+            Start-Sleep -Seconds 3
+            if ($PauseBetweenScenarios -gt 0) {
+                Write-Step "Pausing $PauseBetweenScenarios seconds..."
+                Start-Sleep -Seconds $PauseBetweenScenarios
+            }
         }
     }
 }
@@ -144,7 +172,6 @@ for ($i = 0; $i -lt $scenarios.Count; $i++) {
 # ── Collect results into repo ────────────────────────────────────────────────
 Write-Header "COLLECTING RESULTS"
 
-$safeInstance = $InstanceId -replace "__", "-" -replace "/", "-"
 $resultBase = Join-Path $BcbenchRoot "notebooks/result/bug-fix"
 $dirMap = @{
     "eval_claude_baseline_baseline"                       = "claude-baseline-sonnet-4-6"
@@ -177,48 +204,57 @@ foreach ($key in $dirMap.Keys) {
 # ── Parse JSONL for report ───────────────────────────────────────────────────
 Write-Header "GENERATING REPORT"
 
-function Read-Result($dir) {
-    $jsonl = Join-Path $resultBase "$dir\$InstanceId.jsonl"
-    if (-not (Test-Path $jsonl)) { return $null }
-    $line = Get-Content $jsonl -First 1
-    return ($line | ConvertFrom-Json)
-}
-
 $reportRows = @()
-foreach ($key in $dirMap.Keys) {
-    $r = Read-Result $dirMap[$key]
-    if ($null -eq $r) { continue }
-    $agentLabel = if ($key -like "eval_claude*") { "Claude Code" } else { "GitHub Copilot" }
-    $scenarioLabel = switch -Wildcard ($key) {
-        "*baseline*" { "Baseline" }
-        "*aldc_developer*" { "ALDC + al-developer-bench" }
-        "*aldc_conductor*" { "ALDC + al-conductor-bench" }
-    }
-    $reportRows += [PSCustomObject]@{
-        Agent    = $agentLabel
-        Scenario = $scenarioLabel
-        Resolved = if ($r.resolved) { "✅" } else { "❌" }
-        Build    = if ($r.build) { "✅" } else { "❌" }
-        Turns    = $r.metrics.turn_count
-        Time     = "$([int]$r.metrics.execution_time)s"
-        Tokens   = [int](($r.metrics.prompt_tokens + $r.metrics.completion_tokens) / 1000)
+foreach ($InstanceId in $InstanceIds) {
+    foreach ($key in $dirMap.Keys) {
+        $jsonl = Join-Path $resultBase "$($dirMap[$key])\$InstanceId.jsonl"
+        if (-not (Test-Path $jsonl)) { continue }
+        $r = Get-Content $jsonl -First 1 | ConvertFrom-Json
+        $agentLabel = if ($key -like "eval_claude*") { "Claude Code" } else { "GitHub Copilot" }
+        $scenarioLabel = switch -Wildcard ($key) {
+            "*baseline*" { "Baseline" }
+            "*aldc_developer*" { "ALDC + al-developer-bench" }
+            "*aldc_conductor*" { "ALDC + al-conductor-bench" }
+        }
+        $reportRows += [PSCustomObject]@{
+            Instance = $InstanceId
+            Agent    = $agentLabel
+            Scenario = $scenarioLabel
+            Resolved = if ($r.resolved) { "✅" } else { "❌" }
+            Build    = if ($r.build) { "✅" } else { "❌" }
+            Turns    = $r.metrics.turn_count
+            Time     = "$([int]$r.metrics.execution_time)s"
+            Tokens   = [int](($r.metrics.prompt_tokens + $r.metrics.completion_tokens) / 1000)
+        }
     }
 }
 
 $date = (Get-Date).ToString("yyyy-MM-dd")
 $totalElapsed = [int]((Get-Date) - $StartTime).TotalMinutes
+$instanceLabel = ($InstanceIds | ForEach-Object { $_ -replace 'microsoft__BCApps-','BCApps-' -replace 'microsoftInternal__NAV-','NAV-' }) -join ", "
 
-# Build markdown table
-$mdTable = "| Agent | Scenario | Resolved | Build | Turns | Time | Tokens (K) |`n"
-$mdTable += "|-------|----------|:--------:|:-----:|------:|-----:|-----------:|`n"
-foreach ($row in $reportRows) {
-    $mdTable += "| $($row.Agent) | $($row.Scenario) | $($row.Resolved) | $($row.Build) | $($row.Turns) | $($row.Time) | $($row.Tokens)K |`n"
+# Build markdown table (with Instance column when multiple)
+$multiInstance = $InstanceIds.Count -gt 1
+if ($multiInstance) {
+    $mdTable = "| Instance | Agent | Scenario | Resolved | Build | Turns | Time | Tokens (K) |`n"
+    $mdTable += "|----------|-------|----------|:--------:|:-----:|------:|-----:|-----------:|`n"
+    foreach ($row in $reportRows) {
+        $inst = $row.Instance -replace 'microsoft__BCApps-','BCApps-' -replace 'microsoftInternal__NAV-','NAV-'
+        $mdTable += "| $inst | $($row.Agent) | $($row.Scenario) | $($row.Resolved) | $($row.Build) | $($row.Turns) | $($row.Time) | $($row.Tokens)K |`n"
+    }
+} else {
+    $mdTable = "| Agent | Scenario | Resolved | Build | Turns | Time | Tokens (K) |`n"
+    $mdTable += "|-------|----------|:--------:|:-----:|------:|-----:|-----------:|`n"
+    foreach ($row in $reportRows) {
+        $mdTable += "| $($row.Agent) | $($row.Scenario) | $($row.Resolved) | $($row.Build) | $($row.Turns) | $($row.Time) | $($row.Tokens)K |`n"
+    }
 }
 
 $mdContent = @"
-# Evaluation Report: $InstanceId
+# Evaluation Report: $instanceLabel
 
 **Date:** $date
+**Instances:** $($InstanceIds -join ', ')
 **Model:** claude-sonnet-4-6 (Claude) / claude-sonnet-4.6 (Copilot)
 **Total time:** ~${totalElapsed} minutes
 
@@ -226,18 +262,13 @@ $mdContent = @"
 
 $mdTable
 
-## Key Findings
-
-- Claude baseline pass@1 across runs: see individual run directories
-- ALDC impact: compare Baseline vs ALDC rows for each agent
-- Both agents face the same test mock constraint: `FulfillmentRequest count check`
-
 ## Notes
 
-> Generated by `Run-FullComparison.ps1` on $date
+> Generated by Run-FullComparison.ps1 on $date
 "@
 
-$reportPath = Join-Path $BcbenchRoot "notebooks/result/bug-fix/report-$safeInstance-$date.md"
+$safeLabel = $instanceLabel -replace '[^a-zA-Z0-9-]', '_'
+$reportPath = Join-Path $BcbenchRoot "notebooks/result/bug-fix/report-${safeLabel}-${date}.md"
 $mdContent | Set-Content -Path $reportPath -Encoding UTF8
 Write-Ok "Report written: $reportPath"
 
@@ -251,7 +282,7 @@ Write-Header "PUSHING TO REPO"
 Push-Location $BcbenchRoot
 try {
     git add notebooks/result/bug-fix/
-    git commit -m "results: $InstanceId full comparison claude+copilot ($date)"
+    git commit -m "results: $instanceLabel full comparison claude+copilot ($date)"
     git push origin $GitBranch
     Write-Ok "Pushed to $GitBranch"
 }
@@ -275,11 +306,11 @@ if ($EmailTo -ne "") {
                 "javiarmesto@gmail.com",
                 ($gmailPass | ConvertTo-SecureString -AsPlainText -Force)
             )
-            $body = "BC-Bench evaluation complete for $InstanceId ($date).`n`n" + ($reportRows | Format-Table -AutoSize | Out-String)
+            $body = "BC-Bench evaluation complete for $instanceLabel ($date).`n`n" + ($reportRows | Format-Table -AutoSize | Out-String)
             Send-MailMessage `
                 -To $EmailTo `
                 -From "javiarmesto@gmail.com" `
-                -Subject "[BC-Bench] Evaluation complete: $InstanceId ($date)" `
+                -Subject "[BC-Bench] Evaluation complete: $instanceLabel ($date)" `
                 -Body $body `
                 -SmtpServer "smtp.gmail.com" `
                 -Port 587 `
