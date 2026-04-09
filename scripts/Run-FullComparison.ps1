@@ -21,8 +21,12 @@
     Use existing testbed repo (only if all entries share same commit).
 .PARAMETER EmailTo
     Optional: send summary email to this address (requires Gmail app password in $env:GMAIL_APP_PASSWORD).
+.PARAMETER OnlyMissing
+    Skip scenarios where a result jsonl for InstanceId already exists (useful to resume failed runs).
+.PARAMETER AutoShutdown
+    Shut down the machine after all scenarios, collect and push are done (and email sent).
 .EXAMPLE
-    .\Run-FullComparison.ps1 -InstanceId "microsoft__BCApps-5633" -SkipContainerSetup -SkipRepoClone
+    .\Run-FullComparison.ps1 -InstanceId "microsoft__BCApps-4822" -OnlyMissing -EmailTo "you@gmail.com" -AutoShutdown
 #>
 param(
     [string]$InstanceId = "microsoft__BCApps-5633",
@@ -34,7 +38,9 @@ param(
     [switch]$SkipCopilot,
     [switch]$SkipContainerSetup,
     [switch]$SkipRepoClone,
-    [string]$EmailTo = ""
+    [string]$EmailTo = "",
+    [switch]$OnlyMissing,
+    [switch]$AutoShutdown
 )
 
 Set-StrictMode -Version Latest
@@ -75,6 +81,18 @@ for ($i = 0; $i -lt $scenarios.Count; $i++) {
 
     if ($s.Agent -eq "claude" -and $SkipClaude) { continue }
     if ($s.Agent -eq "copilot" -and $SkipCopilot) { continue }
+
+    if ($OnlyMissing) {
+        $existingDir = Get-ChildItem $BcbenchRoot -Directory -ErrorAction SilentlyContinue |
+            Where-Object { $_.Name -like "$($s.OutDir)*" } | Select-Object -First 1
+        if ($existingDir) {
+            $hit = Get-ChildItem $existingDir.FullName -Recurse -Filter "$InstanceId.jsonl" -ErrorAction SilentlyContinue
+            if ($hit) {
+                Write-Ok "[$($i+1)] Skipping $($s.Agent) $($s.Scenario) — result already exists"
+                continue
+            }
+        }
+    }
 
     Write-Header "[$($i+1)/$($scenarios.Count)] $($s.Agent.ToUpper()) — $($s.Scenario)"
 
@@ -129,12 +147,12 @@ Write-Header "COLLECTING RESULTS"
 $safeInstance = $InstanceId -replace "__", "-" -replace "/", "-"
 $resultBase = Join-Path $BcbenchRoot "notebooks/result/bug-fix"
 $dirMap = @{
-    "eval_claude_baseline_baseline"                                  = "claude-baseline-sonnet-4-6"
-    "eval_claude_aldc_developer_aldc_al_developer_bench"             = "claude-aldc-al-developer-bench-sonnet-4-6"
-    "eval_claude_aldc_conductor_aldc_al_conductor_bench"             = "claude-aldc-al-conductor-bench-sonnet-4-6"
-    "eval_copilot_baseline_baseline"                                 = "copilot-baseline-sonnet-4-6"
-    "eval_copilot_aldc_developer_aldc_al_developer_bench"            = "copilot-aldc-al-developer-bench-sonnet-4-6"
-    "eval_copilot_aldc_conductor_aldc_al_conductor_bench"            = "copilot-aldc-al-conductor-bench-sonnet-4-6"
+    "eval_claude_baseline_baseline"                       = "claude-baseline-sonnet-4-6"
+    "eval_claude_aldc_developer_aldc_al_developer_bench"  = "claude-aldc-al-developer-bench-sonnet-4-6"
+    "eval_claude_aldc_conductor_aldc_al_conductor_bench"  = "claude-aldc-al-conductor-bench-sonnet-4-6"
+    "eval_copilot_baseline_baseline"                      = "copilot-baseline-sonnet-4-6"
+    "eval_copilot_aldc_developer_aldc_al_developer_bench" = "copilot-aldc-al-developer-bench-sonnet-4-6"
+    "eval_copilot_aldc_conductor_aldc_al_conductor_bench" = "copilot-aldc-al-conductor-bench-sonnet-4-6"
 }
 
 foreach ($key in $dirMap.Keys) {
@@ -276,3 +294,9 @@ if ($EmailTo -ne "") {
 }
 
 Write-Header "DONE — Total time: ${totalElapsed} minutes"
+
+if ($AutoShutdown) {
+    Write-Step "AutoShutdown: shutting down in 60 seconds... (Ctrl+C to cancel)"
+    Start-Sleep -Seconds 60
+    Stop-Computer -Force
+}
