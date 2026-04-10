@@ -26,10 +26,17 @@
     Skip scenarios where a result jsonl for InstanceId already exists (useful to resume failed runs).
 .PARAMETER AutoShutdown
     Shut down the machine after all scenarios, collect and push are done (and email sent).
+.PARAMETER LlmFamily
+    Model family name (e.g., "sonnet", "opus"). Used to derive model strings:
+    Claude Code = claude-{family}-4-6, Copilot = claude-{family}-4.6
+    Default: "sonnet"
 .EXAMPLE
     # Pull latest scripts first, then run
     git -C C:\bcbench pull origin claude/explain-repo-usage-2rL3g
-    .\Run-FullComparison.ps1 -InstanceIds "microsoft__BCApps-4822","microsoftInternal__NAV-213629" -OnlyMissing -EmailTo "you@gmail.com" -AutoShutdown
+    .\Run-FullComparison.ps1 -InstanceIds "microsoft__BCApps-4822" -OnlyMissing -EmailTo "you@gmail.com" -AutoShutdown
+.EXAMPLE
+    # Run with Opus 4.6 as the LLM
+    .\Run-FullComparison.ps1 -LlmFamily opus -OnlyMissing -EmailTo "you@gmail.com" -AutoShutdown
 #>
 param(
     [string[]]$InstanceIds = @("microsoft__BCApps-5633"),
@@ -43,12 +50,18 @@ param(
     [switch]$SkipRepoClone,
     [string]$EmailTo = "",
     [switch]$OnlyMissing,
-    [switch]$AutoShutdown
+    [switch]$AutoShutdown,
+    [string]$LlmFamily = "sonnet"
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 $StartTime = Get-Date
+
+# ── Model strings derived from LlmFamily ─────────────────────────────────
+$claudeModel = "claude-$LlmFamily-4-6"
+$copilotModel = "claude-$LlmFamily-4.6"
+$modelSuffix = "$LlmFamily-4-6"
 
 # ── Load env_version per instance from dataset ───────────────────────────────
 $envVersions = @{}
@@ -74,12 +87,12 @@ function Write-Fail($msg) { Write-Host "  [!!] $msg" -ForegroundColor Red }
 
 # ── Scenario definitions ────────────────────────────────────────────────────
 $scenarios = @(
-    @{ Agent = "claude"; Scenario = "baseline"; Model = "claude-sonnet-4-6"; OutDir = "eval_claude_baseline" }
-    @{ Agent = "claude"; Scenario = "aldc-developer"; Model = "claude-sonnet-4-6"; OutDir = "eval_claude_aldc_developer" }
-    @{ Agent = "claude"; Scenario = "aldc-conductor"; Model = "claude-sonnet-4-6"; OutDir = "eval_claude_aldc_conductor" }
-    @{ Agent = "copilot"; Scenario = "baseline"; Model = "claude-sonnet-4.6"; OutDir = "eval_copilot_baseline" }
-    @{ Agent = "copilot"; Scenario = "aldc-developer"; Model = "claude-sonnet-4.6"; OutDir = "eval_copilot_aldc_developer" }
-    @{ Agent = "copilot"; Scenario = "aldc-conductor"; Model = "claude-sonnet-4.6"; OutDir = "eval_copilot_aldc_conductor" }
+    @{ Agent = "claude"; Scenario = "baseline"; Model = $claudeModel; OutDir = "eval_claude_baseline" }
+    @{ Agent = "claude"; Scenario = "aldc-developer"; Model = $claudeModel; OutDir = "eval_claude_aldc_developer" }
+    @{ Agent = "claude"; Scenario = "aldc-conductor"; Model = $claudeModel; OutDir = "eval_claude_aldc_conductor" }
+    @{ Agent = "copilot"; Scenario = "baseline"; Model = $copilotModel; OutDir = "eval_copilot_baseline" }
+    @{ Agent = "copilot"; Scenario = "aldc-developer"; Model = $copilotModel; OutDir = "eval_copilot_aldc_developer" }
+    @{ Agent = "copilot"; Scenario = "aldc-conductor"; Model = $copilotModel; OutDir = "eval_copilot_aldc_conductor" }
 )
 
 # ── Run evaluations ──────────────────────────────────────────────────────────
@@ -175,13 +188,16 @@ for ($instIdx = 0; $instIdx -lt $instanceCount; $instIdx++) {
 Write-Header "COLLECTING RESULTS"
 
 $resultBase = Join-Path $BcbenchRoot "notebooks/result/bug-fix"
-$dirMap = @{
-    "eval_claude_baseline_baseline"                       = "claude-baseline-sonnet-4-6"
-    "eval_claude_aldc_developer_aldc_al_developer_bench"  = "claude-aldc-al-developer-bench-sonnet-4-6"
-    "eval_claude_aldc_conductor_aldc_al_conductor_bench"  = "claude-aldc-al-conductor-bench-sonnet-4-6"
-    "eval_copilot_baseline_baseline"                      = "copilot-baseline-sonnet-4-6"
-    "eval_copilot_aldc_developer_aldc_al_developer_bench" = "copilot-aldc-al-developer-bench-sonnet-4-6"
-    "eval_copilot_aldc_conductor_aldc_al_conductor_bench" = "copilot-aldc-al-conductor-bench-sonnet-4-6"
+$scenarioTags = @{
+    "baseline"       = "baseline"
+    "aldc-developer" = "aldc_al_developer_bench"
+    "aldc-conductor" = "aldc_al_conductor_bench"
+}
+$dirMap = @{}
+foreach ($s in $scenarios) {
+    $key = "$($s.OutDir)_$($scenarioTags[$s.Scenario])"
+    $tag = $scenarioTags[$s.Scenario] -replace '_', '-'
+    $dirMap[$key] = "$($s.Agent)-$tag-$modelSuffix"
 }
 
 foreach ($key in $dirMap.Keys) {
@@ -258,7 +274,7 @@ $mdContent = @"
 
 **Date:** $date
 **Instances:** $($InstanceIds -join ', ')
-**Model:** claude-sonnet-4-6 (Claude) / claude-sonnet-4.6 (Copilot)
+**Model:** $claudeModel (Claude) / $copilotModel (Copilot)
 **Total time:** ~${totalElapsed} minutes
 
 ## Results
@@ -285,7 +301,7 @@ Write-Header "PUSHING TO REPO"
 Push-Location $BcbenchRoot
 try {
     git add notebooks/result/bug-fix/
-    git commit -m "results: $instanceLabel full comparison claude+copilot ($date)"
+    git commit -m "results($modelSuffix): $instanceLabel full comparison claude+copilot ($date)"
     git push origin $GitBranch
     Write-Ok "Pushed to $GitBranch"
 }

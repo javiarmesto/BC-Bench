@@ -229,7 +229,7 @@ For each phase in the plan, execute this cycle with **visual progress tracking**
 
 ✅ Deliverables:
   • {TableExtension/Codeunit/Page} created
-  • Test Codeunit created  
+  • Test Codeunit created
   • {X}/{X} tests passing
 ```
 

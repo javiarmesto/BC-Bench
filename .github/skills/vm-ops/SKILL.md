@@ -31,9 +31,14 @@ git -C C:\bcbench pull origin claude/explain-repo-usage-2rL3g
 # 2. Set credentials
 $env:GMAIL_APP_PASSWORD = "your-app-password"
 
-# 3. Run (adjust -InstanceIds as needed)
+# 3. Run with default model (sonnet)
 C:\bcbench\scripts\Run-FullComparison.ps1 `
     -InstanceIds "microsoft__BCApps-4822" `
+    -OnlyMissing -EmailTo "javiarmesto@gmail.com" -AutoShutdown
+
+# 3b. Run with a different model family (e.g., opus)
+C:\bcbench\scripts\Run-FullComparison.ps1 `
+    -LlmFamily opus `
     -OnlyMissing -EmailTo "javiarmesto@gmail.com" -AutoShutdown
 ```
 
