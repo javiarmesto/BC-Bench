@@ -407,7 +407,7 @@ else {
             catch {
                 if ($retryIdx -eq $maxRetries) { throw }
                 Write-Warn "Testbed locked (attempt $retryIdx/$maxRetries), killing processes and waiting..."
-                foreach ($proc in @("claude", "node", "copilot", "gh")) {
+                foreach ($proc in @("claude", "node", "copilot", "gh", "git")) {
                     taskkill /F /IM "$proc.exe" 2>$null | Out-Null
                 }
                 Start-Sleep -Seconds 5

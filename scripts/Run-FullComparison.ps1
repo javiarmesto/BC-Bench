@@ -139,14 +139,12 @@ for ($instIdx = 0; $instIdx -lt $instanceCount; $instIdx++) {
             $runSkipArgs["SkipContainerSetup"] = $true
         }
 
-        # After the first scenario, kill lingering agent processes to release file locks
-        if ($scenarioRanForInstance) {
-            Write-Step "Killing lingering agent processes..."
-            foreach ($proc in @("claude", "node", "copilot", "gh")) {
-                taskkill /F /IM "$proc.exe" 2>$null | Out-Null
-            }
-            Start-Sleep -Seconds 5
+        # Kill lingering agent processes to release file locks on testbed
+        Write-Step "Killing lingering agent processes..."
+        foreach ($proc in @("claude", "node", "copilot", "gh", "git")) {
+            taskkill /F /IM "$proc.exe" 2>$null | Out-Null
         }
+        Start-Sleep -Seconds 5
 
         $outDir = Join-Path $BcbenchRoot $s.OutDir
         $t0 = Get-Date
