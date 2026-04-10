@@ -396,6 +396,15 @@ if ($SkipRepoClone) {
     }
 }
 else {
+    # Stop Docker container to release volume mount lock on testbed
+    $containerWasRunning = $false
+    $runningContainer = docker ps -q -f name="$ContainerName" 2>$null
+    if ($runningContainer) {
+        Write-Warn "Stopping container '$ContainerName' to release volume lock on testbed..."
+        docker stop $ContainerName 2>$null | Out-Null
+        $containerWasRunning = $true
+    }
+
     if (Test-Path $RepoPath) {
         Write-Warn "Removing existing testbed at $RepoPath"
 
@@ -439,7 +448,7 @@ else {
         }
 
         if (-not $removed -and (Test-Path $RepoPath)) {
-            throw "Cannot remove testbed at $RepoPath — a process is holding a lock. Check with: handle.exe $RepoPath"
+            throw "Cannot remove testbed at $RepoPath — Docker container '$ContainerName' may still hold a volume lock. Try: docker rm -f $ContainerName"
         }
     }
 
@@ -490,6 +499,14 @@ else {
         -SparseCheckoutPaths $sparseCheckoutPaths
 
     Write-Success "Repository cloned at $RepoPath"
+
+    # Restart container if we stopped it and container setup is being skipped
+    if ($containerWasRunning -and $SkipContainerSetup) {
+        Write-Info "Restarting container '$ContainerName'..."
+        docker start $ContainerName 2>$null | Out-Null
+        Start-Sleep -Seconds 10
+        Write-Success "Container '$ContainerName' restarted with new testbed"
+    }
 }
 
 # ============================================================================
