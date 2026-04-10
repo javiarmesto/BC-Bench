@@ -112,6 +112,7 @@ for ($instIdx = 0; $instIdx -lt $instanceCount; $instIdx++) {
     $envVersion = $envVersions[$InstanceId]
     Write-Header "INSTANCE [$($instIdx+1)/$instanceCount]: $InstanceId  (BC $envVersion)"
 
+    $scenarioRanForInstance = $false
     for ($i = 0; $i -lt $scenarios.Count; $i++) {
         $s = $scenarios[$i]
 
@@ -132,10 +133,32 @@ for ($instIdx = 0; $instIdx -lt $instanceCount; $instIdx++) {
 
         Write-Header "[$($instIdx+1)/$instanceCount] $InstanceId | $($s.Agent.ToUpper()) — $($s.Scenario)"
 
-        # Reuse container across instances if same BC version
+        # Reuse container across scenarios of the same instance
         $runSkipArgs = $baseSkipArgs.Clone()
         if ($null -ne $prevEnvVersion -and $prevEnvVersion -eq $envVersion -and -not $SkipContainerSetup) {
             $runSkipArgs["SkipContainerSetup"] = $true
+        }
+
+        # After the first scenario, reset testbed via git instead of re-cloning
+        # (avoids file-lock errors from lingering agent processes)
+        if ($scenarioRanForInstance -and (Test-Path $RepoPath) -and -not $runSkipArgs.ContainsKey("SkipRepoClone")) {
+            Write-Step "Killing lingering agent processes..."
+            Get-Process -Name "claude", "node", "copilot" -ErrorAction SilentlyContinue |
+            Stop-Process -Force -ErrorAction SilentlyContinue
+            Start-Sleep -Seconds 2
+
+            Write-Step "Resetting testbed repo to clean state..."
+            Push-Location $RepoPath
+            try {
+                git checkout -- . 2>$null
+                git clean -fd 2>$null
+                Write-Ok "Testbed reset via git"
+                $runSkipArgs["SkipRepoClone"] = $true
+            }
+            catch {
+                Write-Fail "Git reset failed, will re-clone: $_"
+            }
+            finally { Pop-Location }
         }
 
         $outDir = Join-Path $BcbenchRoot $s.OutDir
@@ -158,6 +181,7 @@ for ($instIdx = 0; $instIdx -lt $instanceCount; $instIdx++) {
         }
 
         $prevEnvVersion = $envVersion
+        $scenarioRanForInstance = $true
         $elapsed = [int]((Get-Date) - $t0).TotalMinutes
         $results += [PSCustomObject]@{
             Instance = $InstanceId
