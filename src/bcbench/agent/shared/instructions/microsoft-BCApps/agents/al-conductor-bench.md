@@ -81,6 +81,19 @@ Strictly follow the **Planning → Implementation → Review → Commit** proces
    - Assess complexity: Simple (1-2 phases), Medium (3-5 phases), Complex (6-10 phases)
    - Confirm AL context: Extension type, base objects involved, AL-Go structure
 
+### Bug-Fix Mode (mandatory when task is a bug report)
+
+**Trigger**: activate this mode if the problem statement contains words like "error", "fix", "wrong", "incorrect", "fails", or "bug", OR if the `FAIL_TO_PASS` list is non-empty.
+
+**Do these steps before any other file exploration:**
+
+1. Read every test file listed in `FAIL_TO_PASS`. Identify the `codeunit` under test (the object referenced in the test's `using` clause or invoked directly).
+2. Search the repo for that codeunit name — this is the **only candidate file** for modification.
+3. Read the candidate file and understand the assertion that the failing test is checking.
+4. Do NOT open any other source file until step 3 is complete. Do NOT follow type references, GraphQL queries, or keyword searches before the test-identified file has been read.
+
+Only after completing these four steps may you proceed with the normal planning flow below.
+
 2. **Check for Input Documents**: Before delegating research, check if you have:
    - Architectural design from AL Architecture & Design Specialist → Use to guide planning
    - Specification from al-spec.create → Reference object structure
