@@ -2,12 +2,17 @@
 
 **Date:** 2026-04-09
 **Model:** claude-sonnet-4-6 (Claude) / claude-sonnet-4.6 (Copilot)
-**Total time:** ~141 minutes
+**Total time:** ~69 minutes
 
 ## Results
 
 | Agent | Scenario | Resolved | Build | Turns | Time | Tokens (K) |
 |-------|----------|:--------:|:-----:|------:|-----:|-----------:|
+| GitHub Copilot | ALDC + al-developer-bench | ❌ | ✅ | 26 | 482s | 1720K |
+| GitHub Copilot | Baseline | ✅ | ✅ | 30 | 899s | 1109K |
+| GitHub Copilot | ALDC + al-conductor-bench | ✅ | ✅ | 24 | 215s | 1210K |
+| Claude Code | Baseline | ✅ | ✅ | 16 | 135s | 582K |
+| Claude Code | ALDC + al-conductor-bench | ✅ | ✅ | 35 | 227s | 2195K |
 
 
 ## Key Findings

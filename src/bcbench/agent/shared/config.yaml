@@ -105,3 +105,8 @@ mcp:
     #   type: "stdio"
     #   command: "npx"
     #   args: ["-y", "@modelcontextprotocol/server-filesystem", "{{repo_path}}"]
+
+
+
+
+
