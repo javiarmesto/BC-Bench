@@ -168,19 +168,27 @@ for ($instIdx = 0; $instIdx -lt $instanceCount; $instIdx++) {
         }
 
         if ($exitCode -eq 0) { Write-Ok "Completed in ${elapsed}m" }
-        else { Write-Fail "Failed (exit $exitCode) after ${elapsed}m" }
-
-        # Clean up BC containers and unlock testbed between runs
-        $isLastRun = ($instIdx -eq $instanceCount - 1) -and ($i -eq $scenarios.Count - 1)
-        if (-not $isLastRun) {
-            Write-Step "Cleaning BC containers..."
-            docker ps -aq | ForEach-Object { docker rm -f $_ 2>$null }
-            Start-Sleep -Seconds 3
-            if ($PauseBetweenScenarios -gt 0) {
-                Write-Step "Pausing $PauseBetweenScenarios seconds..."
-                Start-Sleep -Seconds $PauseBetweenScenarios
-            }
+        else {
+            Write-Fail "Failed (exit $exitCode) after ${elapsed}m"
+            # Container may be broken after failure — force recreation for next scenario
+            $prevEnvVersion = $null
         }
+
+        # Pause between scenarios (but don't destroy the container — reuse it)
+        $isLastScenario = ($i -eq $scenarios.Count - 1)
+        $isLastRun = ($instIdx -eq $instanceCount - 1) -and $isLastScenario
+        if (-not $isLastRun -and $PauseBetweenScenarios -gt 0) {
+            Write-Step "Pausing $PauseBetweenScenarios seconds..."
+            Start-Sleep -Seconds $PauseBetweenScenarios
+        }
+    }
+
+    # Clean up BC containers between instances (different env_version may need different container)
+    $isLastInstance = ($instIdx -eq $instanceCount - 1)
+    if (-not $isLastInstance) {
+        Write-Step "Cleaning BC containers between instances..."
+        docker ps -aq | ForEach-Object { docker rm -f $_ 2>$null }
+        Start-Sleep -Seconds 3
     }
 }
 
