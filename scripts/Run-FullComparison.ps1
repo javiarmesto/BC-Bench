@@ -27,6 +27,8 @@
 .PARAMETER AutoShutdown
     Shut down the machine after all scenarios, collect and push are done (and email sent).
 .EXAMPLE
+    # Pull latest scripts first, then run
+    git -C C:\bcbench pull origin claude/explain-repo-usage-2rL3g
     .\Run-FullComparison.ps1 -InstanceIds "microsoft__BCApps-4822","microsoftInternal__NAV-213629" -OnlyMissing -EmailTo "you@gmail.com" -AutoShutdown
 #>
 param(
@@ -105,7 +107,7 @@ for ($instIdx = 0; $instIdx -lt $instanceCount; $instIdx++) {
 
         if ($OnlyMissing) {
             $existingDir = Get-ChildItem $BcbenchRoot -Directory -ErrorAction SilentlyContinue |
-                Where-Object { $_.Name -like "$($s.OutDir)*" } | Select-Object -First 1
+            Where-Object { $_.Name -like "$($s.OutDir)*" } | Select-Object -First 1
             if ($existingDir) {
                 $hit = Get-ChildItem $existingDir.FullName -Recurse -Filter "$InstanceId.jsonl" -ErrorAction SilentlyContinue
                 if ($hit) {
@@ -231,7 +233,7 @@ foreach ($InstanceId in $InstanceIds) {
 
 $date = (Get-Date).ToString("yyyy-MM-dd")
 $totalElapsed = [int]((Get-Date) - $StartTime).TotalMinutes
-$instanceLabel = ($InstanceIds | ForEach-Object { $_ -replace 'microsoft__BCApps-','BCApps-' -replace 'microsoftInternal__NAV-','NAV-' }) -join ", "
+$instanceLabel = ($InstanceIds | ForEach-Object { $_ -replace 'microsoft__BCApps-', 'BCApps-' -replace 'microsoftInternal__NAV-', 'NAV-' }) -join ", "
 
 # Build markdown table (with Instance column when multiple)
 $multiInstance = $InstanceIds.Count -gt 1
@@ -239,10 +241,11 @@ if ($multiInstance) {
     $mdTable = "| Instance | Agent | Scenario | Resolved | Build | Turns | Time | Tokens (K) |`n"
     $mdTable += "|----------|-------|----------|:--------:|:-----:|------:|-----:|-----------:|`n"
     foreach ($row in $reportRows) {
-        $inst = $row.Instance -replace 'microsoft__BCApps-','BCApps-' -replace 'microsoftInternal__NAV-','NAV-'
+        $inst = $row.Instance -replace 'microsoft__BCApps-', 'BCApps-' -replace 'microsoftInternal__NAV-', 'NAV-'
         $mdTable += "| $inst | $($row.Agent) | $($row.Scenario) | $($row.Resolved) | $($row.Build) | $($row.Turns) | $($row.Time) | $($row.Tokens)K |`n"
     }
-} else {
+}
+else {
     $mdTable = "| Agent | Scenario | Resolved | Build | Turns | Time | Tokens (K) |`n"
     $mdTable += "|-------|----------|:--------:|:-----:|------:|-----:|-----------:|`n"
     foreach ($row in $reportRows) {
