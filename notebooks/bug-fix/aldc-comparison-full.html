@@ -1,0 +1,916 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>ALDC vs Baseline — BC-Bench Results</title>
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+         max-width: 1200px; margin: 0 auto; padding: 20px; color: #333; line-height: 1.6; }
+  h1 { border-bottom: 3px solid #2c3e50; padding-bottom: 10px; }
+  h2 { color: #2c3e50; margin-top: 40px; border-bottom: 1px solid #bdc3c7; padding-bottom: 5px; }
+  h3 { color: #34495e; }
+  .data-table { border-collapse: collapse; width: 100%; margin: 15px 0; font-size: 13px; }
+  .data-table th { background: #2c3e50; color: white; padding: 8px 12px; text-align: center; }
+  .data-table td { padding: 6px 12px; text-align: center; border-bottom: 1px solid #ecf0f1; }
+  .data-table tr:hover { background: #f8f9fa; }
+  .chart-container { margin: 20px 0; }
+  .finding { background: #f8f9fa; border-left: 4px solid #3498db; padding: 15px; margin: 15px 0; }
+  .finding.warning { border-left-color: #e67e22; }
+  .finding.critical { border-left-color: #e74c3c; }
+  .finding.positive { border-left-color: #2ecc71; }
+  .caveat { background: #fef9e7; border: 1px solid #f9e79f; padding: 12px; margin: 15px 0; border-radius: 4px; }
+  .metric-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin: 20px 0; }
+  .metric-card { background: #f8f9fa; padding: 15px; border-radius: 8px; text-align: center; }
+  .metric-card .value { font-size: 28px; font-weight: bold; color: #2c3e50; }
+  .metric-card .label { font-size: 12px; color: #7f8c8d; text-transform: uppercase; }
+</style>
+</head>
+<body>
+
+<h1>ALDC vs Baseline: BC-Bench Results</h1>
+<p><strong>Date:</strong> 2026-04-10 &nbsp;|&nbsp;
+   <strong>Instances:</strong> 3 (BCApps-5633, 4822, 4699) &nbsp;|&nbsp;
+   <strong>Scenarios:</strong> Baseline, ALDC+developer, ALDC+conductor &nbsp;|&nbsp;
+   <strong>Agents:</strong> Claude Code, Copilot &nbsp;|&nbsp;
+   <strong>Models:</strong> sonnet-4-6, opus-4-6</p>
+
+<div class="caveat">
+  <strong>Caveat:</strong> ALDC es un framework HITL (Human-in-the-Loop) con validation gates, TDD y spec-driven development.
+  En BC-Bench se testea <strong>solo la parte ejecutora</strong> en modo autonomo ("bench mode"), sin validaciones humanas.
+  n=3 instancias — analisis exploratorio, sin significancia estadistica.
+</div>
+
+<div class="metric-grid">
+  <div class="metric-card">
+    <div class="value">25</div>
+    <div class="label">Total result rows</div>
+  </div>
+  <div class="metric-card">
+    <div class="value">71%</div>
+    <div class="label">Overall resolution rate</div>
+  </div>
+  <div class="metric-card">
+    <div class="value">3-4x</div>
+    <div class="label">ALDC token overhead</div>
+  </div>
+</div>
+
+<h2>1. Resolution Heatmap</h2>
+<p>Green = resolved. Red = failed. Gray = not tested. Yellow = partial (e.g., 1/2 runs passed).</p>
+<div class="chart-container" id="heatmap"></div>
+
+<h2>2. Summary Table</h2>
+<table class="dataframe data-table">
+  <thead>
+    <tr style="text-align: right;">
+      <th>Instance</th>
+      <th>Agent</th>
+      <th>Model</th>
+      <th>Scenario</th>
+      <th>Resolved</th>
+      <th>Turns</th>
+      <th>Time (s)</th>
+      <th>Tokens (K)</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>BCApps-4699</td>
+      <td>Copilot</td>
+      <td>opus-4-6</td>
+      <td>ALDC+conductor</td>
+      <td>✅</td>
+      <td>22</td>
+      <td>141</td>
+      <td>1100</td>
+    </tr>
+    <tr>
+      <td>BCApps-4699</td>
+      <td>Claude Code</td>
+      <td>opus-4-6</td>
+      <td>ALDC+developer</td>
+      <td>✅</td>
+      <td>21</td>
+      <td>109</td>
+      <td>785</td>
+    </tr>
+    <tr>
+      <td>BCApps-4699</td>
+      <td>Copilot</td>
+      <td>opus-4-6</td>
+      <td>Baseline</td>
+      <td>✅</td>
+      <td>15</td>
+      <td>120</td>
+      <td>412</td>
+    </tr>
+    <tr>
+      <td>BCApps-4699</td>
+      <td>Claude Code</td>
+      <td>sonnet-4-6</td>
+      <td>ALDC+conductor</td>
+      <td>✅</td>
+      <td>9</td>
+      <td>61</td>
+      <td>464</td>
+    </tr>
+    <tr>
+      <td>BCApps-4699</td>
+      <td>Copilot</td>
+      <td>sonnet-4-6</td>
+      <td>ALDC+developer</td>
+      <td>✅</td>
+      <td>23</td>
+      <td>205</td>
+      <td>1200</td>
+    </tr>
+    <tr>
+      <td>BCApps-4699</td>
+      <td>Claude Code</td>
+      <td>sonnet-4-6</td>
+      <td>Baseline</td>
+      <td>✅</td>
+      <td>15</td>
+      <td>65</td>
+      <td>333</td>
+    </tr>
+    <tr>
+      <td>BCApps-4822</td>
+      <td>Claude Code</td>
+      <td>opus-4-6</td>
+      <td>ALDC+conductor</td>
+      <td>✅</td>
+      <td>18</td>
+      <td>106</td>
+      <td>776</td>
+    </tr>
+    <tr>
+      <td>BCApps-4822</td>
+      <td>Copilot</td>
+      <td>opus-4-6</td>
+      <td>ALDC+conductor</td>
+      <td>✅</td>
+      <td>21</td>
+      <td>231</td>
+      <td>1200</td>
+    </tr>
+    <tr>
+      <td>BCApps-4822</td>
+      <td>Claude Code</td>
+      <td>opus-4-6</td>
+      <td>ALDC+developer</td>
+      <td>✅</td>
+      <td>17</td>
+      <td>127</td>
+      <td>689</td>
+    </tr>
+    <tr>
+      <td>BCApps-4822</td>
+      <td>Copilot</td>
+      <td>opus-4-6</td>
+      <td>ALDC+developer</td>
+      <td>✅</td>
+      <td>22</td>
+      <td>260</td>
+      <td>1300</td>
+    </tr>
+    <tr>
+      <td>BCApps-4822</td>
+      <td>Claude Code</td>
+      <td>opus-4-6</td>
+      <td>Baseline</td>
+      <td>✅</td>
+      <td>11</td>
+      <td>119</td>
+      <td>182</td>
+    </tr>
+    <tr>
+      <td>BCApps-4822</td>
+      <td>Claude Code</td>
+      <td>sonnet-4-6</td>
+      <td>ALDC+conductor</td>
+      <td>✅</td>
+      <td>35</td>
+      <td>227</td>
+      <td>2183</td>
+    </tr>
+    <tr>
+      <td>BCApps-4822</td>
+      <td>Copilot</td>
+      <td>sonnet-4-6</td>
+      <td>ALDC+conductor</td>
+      <td>✅</td>
+      <td>24</td>
+      <td>215</td>
+      <td>1200</td>
+    </tr>
+    <tr>
+      <td>BCApps-4822</td>
+      <td>Claude Code</td>
+      <td>sonnet-4-6</td>
+      <td>ALDC+developer</td>
+      <td>✅</td>
+      <td>25</td>
+      <td>259</td>
+      <td>1737</td>
+    </tr>
+    <tr>
+      <td>BCApps-4822</td>
+      <td>Copilot</td>
+      <td>sonnet-4-6</td>
+      <td>ALDC+developer</td>
+      <td>❌</td>
+      <td>26</td>
+      <td>482</td>
+      <td>1700</td>
+    </tr>
+    <tr>
+      <td>BCApps-4822</td>
+      <td>Claude Code</td>
+      <td>sonnet-4-6</td>
+      <td>Baseline</td>
+      <td>✅</td>
+      <td>16</td>
+      <td>135</td>
+      <td>574</td>
+    </tr>
+    <tr>
+      <td>BCApps-4822</td>
+      <td>Copilot</td>
+      <td>sonnet-4-6</td>
+      <td>Baseline</td>
+      <td>✅</td>
+      <td>30</td>
+      <td>899</td>
+      <td>1100</td>
+    </tr>
+    <tr>
+      <td>BCApps-5633</td>
+      <td>Claude Code</td>
+      <td>opus-4-6</td>
+      <td>Baseline</td>
+      <td>❌</td>
+      <td>13</td>
+      <td>366</td>
+      <td>327</td>
+    </tr>
+    <tr>
+      <td>BCApps-5633</td>
+      <td>Claude Code</td>
+      <td>sonnet-4-6</td>
+      <td>ALDC+conductor</td>
+      <td>❌</td>
+      <td>40</td>
+      <td>627</td>
+      <td>3161</td>
+    </tr>
+    <tr>
+      <td>BCApps-5633</td>
+      <td>Copilot</td>
+      <td>sonnet-4-6</td>
+      <td>ALDC+conductor</td>
+      <td>❌</td>
+      <td>31</td>
+      <td>445</td>
+      <td>2300</td>
+    </tr>
+    <tr>
+      <td>BCApps-5633</td>
+      <td>Claude Code</td>
+      <td>sonnet-4-6</td>
+      <td>ALDC+developer</td>
+      <td>❌</td>
+      <td>22</td>
+      <td>335</td>
+      <td>1102</td>
+    </tr>
+    <tr>
+      <td>BCApps-5633</td>
+      <td>Copilot</td>
+      <td>sonnet-4-6</td>
+      <td>ALDC+developer</td>
+      <td>✅</td>
+      <td>73</td>
+      <td>1269</td>
+      <td>1400</td>
+    </tr>
+    <tr>
+      <td>BCApps-5633</td>
+      <td>Claude Code</td>
+      <td>sonnet-4-6</td>
+      <td>Baseline</td>
+      <td>❌</td>
+      <td>26</td>
+      <td>460</td>
+      <td>1140</td>
+    </tr>
+    <tr>
+      <td>BCApps-5633</td>
+      <td>Copilot</td>
+      <td>sonnet-4-6</td>
+      <td>Baseline</td>
+      <td>❌</td>
+      <td>13</td>
+      <td>273</td>
+      <td>418</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2>3. Token Overhead</h2>
+<div class="chart-container" id="tokens"></div>
+
+<h3>3.1 Overhead Multiplier (ALDC / Baseline)</h3>
+<p>Solo donde existen datos pareados (mismo agent + model + instance).</p>
+<table class="dataframe data-table">
+  <thead>
+    <tr style="text-align: right;">
+      <th>Instance</th>
+      <th>Agent</th>
+      <th>Model</th>
+      <th>Scenario</th>
+      <th>Overhead</th>
+      <th>Resolution</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>BCApps-5633</td>
+      <td>Claude Code</td>
+      <td>sonnet-4-6</td>
+      <td>ALDC+developer</td>
+      <td>1.0x</td>
+      <td>= same</td>
+    </tr>
+    <tr>
+      <td>BCApps-5633</td>
+      <td>Claude Code</td>
+      <td>sonnet-4-6</td>
+      <td>ALDC+conductor</td>
+      <td>2.8x</td>
+      <td>= same</td>
+    </tr>
+    <tr>
+      <td>BCApps-5633</td>
+      <td>Copilot</td>
+      <td>sonnet-4-6</td>
+      <td>ALDC+developer</td>
+      <td>3.3x</td>
+      <td>✅ improved</td>
+    </tr>
+    <tr>
+      <td>BCApps-5633</td>
+      <td>Copilot</td>
+      <td>sonnet-4-6</td>
+      <td>ALDC+conductor</td>
+      <td>5.5x</td>
+      <td>= same</td>
+    </tr>
+    <tr>
+      <td>BCApps-4822</td>
+      <td>Claude Code</td>
+      <td>sonnet-4-6</td>
+      <td>ALDC+developer</td>
+      <td>3.0x</td>
+      <td>= same</td>
+    </tr>
+    <tr>
+      <td>BCApps-4822</td>
+      <td>Claude Code</td>
+      <td>sonnet-4-6</td>
+      <td>ALDC+conductor</td>
+      <td>3.8x</td>
+      <td>= same</td>
+    </tr>
+    <tr>
+      <td>BCApps-4822</td>
+      <td>Claude Code</td>
+      <td>opus-4-6</td>
+      <td>ALDC+developer</td>
+      <td>3.8x</td>
+      <td>= same</td>
+    </tr>
+    <tr>
+      <td>BCApps-4822</td>
+      <td>Claude Code</td>
+      <td>opus-4-6</td>
+      <td>ALDC+conductor</td>
+      <td>4.3x</td>
+      <td>= same</td>
+    </tr>
+    <tr>
+      <td>BCApps-4822</td>
+      <td>Copilot</td>
+      <td>sonnet-4-6</td>
+      <td>ALDC+developer</td>
+      <td>1.5x</td>
+      <td>❌ regressed</td>
+    </tr>
+    <tr>
+      <td>BCApps-4822</td>
+      <td>Copilot</td>
+      <td>sonnet-4-6</td>
+      <td>ALDC+conductor</td>
+      <td>1.1x</td>
+      <td>= same</td>
+    </tr>
+    <tr>
+      <td>BCApps-4699</td>
+      <td>Claude Code</td>
+      <td>sonnet-4-6</td>
+      <td>ALDC+conductor</td>
+      <td>1.4x</td>
+      <td>= same</td>
+    </tr>
+    <tr>
+      <td>BCApps-4699</td>
+      <td>Copilot</td>
+      <td>opus-4-6</td>
+      <td>ALDC+conductor</td>
+      <td>2.7x</td>
+      <td>= same</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="finding warning">
+  <strong>Hallazgo:</strong> El overhead medio de ALDC es 3.0-4.3x sobre baseline (developer y conductor respectivamente).
+  Este coste es estructural: ~300KB de instrucciones + skills + reglas cargadas en contexto.
+</div>
+
+<h2>4. Efficiency: Turns & Time</h2>
+<div class="chart-container" id="efficiency"></div>
+
+<h2>5. The Blindness Problem / El Problema de la Ceguera</h2>
+<p>ALDC despliega 32 archivos (~300KB) en <code>.claude/</code>. Pero no podemos verificar si el modelo
+los lee, los procesa, o los ignora. Solo tenemos evidencia indirecta.</p>
+
+<table class="dataframe data-table">
+  <thead>
+    <tr style="text-align: right;">
+      <th>Instance</th>
+      <th>Agent</th>
+      <th>Model</th>
+      <th>Scenario</th>
+      <th>Resolved</th>
+      <th>Agent Confirmed</th>
+      <th>Skills Invoked</th>
+      <th>Subagents</th>
+      <th>Rules</th>
+      <th>Files</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>BCApps-5633</td>
+      <td>Claude Code</td>
+      <td>sonnet-4-6</td>
+      <td>ALDC+developer</td>
+      <td>❌</td>
+      <td>✅</td>
+      <td>0</td>
+      <td>—</td>
+      <td>8/8</td>
+      <td>32</td>
+    </tr>
+    <tr>
+      <td>BCApps-4822</td>
+      <td>Claude Code</td>
+      <td>sonnet-4-6</td>
+      <td>ALDC+developer</td>
+      <td>✅</td>
+      <td>✅</td>
+      <td>0</td>
+      <td>—</td>
+      <td>8/8</td>
+      <td>32</td>
+    </tr>
+    <tr>
+      <td>BCApps-5633</td>
+      <td>Claude Code</td>
+      <td>sonnet-4-6</td>
+      <td>ALDC+conductor</td>
+      <td>❌</td>
+      <td>✅</td>
+      <td>0</td>
+      <td>—</td>
+      <td>8/8</td>
+      <td>32</td>
+    </tr>
+    <tr>
+      <td>BCApps-4822</td>
+      <td>Claude Code</td>
+      <td>sonnet-4-6</td>
+      <td>ALDC+conductor</td>
+      <td>✅</td>
+      <td>✅</td>
+      <td>0</td>
+      <td>—</td>
+      <td>8/8</td>
+      <td>32</td>
+    </tr>
+    <tr>
+      <td>BCApps-4699</td>
+      <td>Claude Code</td>
+      <td>sonnet-4-6</td>
+      <td>ALDC+conductor</td>
+      <td>✅</td>
+      <td>✅</td>
+      <td>0</td>
+      <td>—</td>
+      <td>8/8</td>
+      <td>32</td>
+    </tr>
+    <tr>
+      <td>BCApps-4822</td>
+      <td>Claude Code</td>
+      <td>opus-4-6</td>
+      <td>ALDC+developer</td>
+      <td>✅</td>
+      <td>✅</td>
+      <td>0</td>
+      <td>—</td>
+      <td>8/8</td>
+      <td>32</td>
+    </tr>
+    <tr>
+      <td>BCApps-4699</td>
+      <td>Claude Code</td>
+      <td>opus-4-6</td>
+      <td>ALDC+developer</td>
+      <td>✅</td>
+      <td>✅</td>
+      <td>0</td>
+      <td>—</td>
+      <td>8/8</td>
+      <td>32</td>
+    </tr>
+    <tr>
+      <td>BCApps-4822</td>
+      <td>Claude Code</td>
+      <td>opus-4-6</td>
+      <td>ALDC+conductor</td>
+      <td>✅</td>
+      <td>✅</td>
+      <td>0</td>
+      <td>—</td>
+      <td>8/8</td>
+      <td>32</td>
+    </tr>
+    <tr>
+      <td>BCApps-5633</td>
+      <td>Copilot</td>
+      <td>sonnet-4-6</td>
+      <td>ALDC+developer</td>
+      <td>✅</td>
+      <td>✅</td>
+      <td>0</td>
+      <td>al-planning-subagent, al-implement-subagent, al-review-subagent</td>
+      <td>8/8</td>
+      <td>32</td>
+    </tr>
+    <tr>
+      <td>BCApps-4822</td>
+      <td>Copilot</td>
+      <td>sonnet-4-6</td>
+      <td>ALDC+developer</td>
+      <td>❌</td>
+      <td>✅</td>
+      <td>0</td>
+      <td>al-planning-subagent, al-implement-subagent, al-review-subagent</td>
+      <td>8/8</td>
+      <td>32</td>
+    </tr>
+    <tr>
+      <td>BCApps-4699</td>
+      <td>Copilot</td>
+      <td>sonnet-4-6</td>
+      <td>ALDC+developer</td>
+      <td>✅</td>
+      <td>✅</td>
+      <td>0</td>
+      <td>al-planning-subagent, al-implement-subagent, al-review-subagent</td>
+      <td>8/8</td>
+      <td>32</td>
+    </tr>
+    <tr>
+      <td>BCApps-5633</td>
+      <td>Copilot</td>
+      <td>sonnet-4-6</td>
+      <td>ALDC+conductor</td>
+      <td>❌</td>
+      <td>✅</td>
+      <td>0</td>
+      <td>al-planning-subagent, al-implement-subagent, al-review-subagent</td>
+      <td>8/8</td>
+      <td>32</td>
+    </tr>
+    <tr>
+      <td>BCApps-4822</td>
+      <td>Copilot</td>
+      <td>sonnet-4-6</td>
+      <td>ALDC+conductor</td>
+      <td>✅</td>
+      <td>✅</td>
+      <td>0</td>
+      <td>al-planning-subagent, al-implement-subagent, al-review-subagent</td>
+      <td>8/8</td>
+      <td>32</td>
+    </tr>
+    <tr>
+      <td>BCApps-4822</td>
+      <td>Copilot</td>
+      <td>opus-4-6</td>
+      <td>ALDC+developer</td>
+      <td>✅</td>
+      <td>✅</td>
+      <td>0</td>
+      <td>al-planning-subagent, al-implement-subagent, al-review-subagent</td>
+      <td>8/8</td>
+      <td>32</td>
+    </tr>
+    <tr>
+      <td>BCApps-4822</td>
+      <td>Copilot</td>
+      <td>opus-4-6</td>
+      <td>ALDC+conductor</td>
+      <td>✅</td>
+      <td>✅</td>
+      <td>0</td>
+      <td>al-planning-subagent, al-implement-subagent, al-review-subagent</td>
+      <td>8/8</td>
+      <td>32</td>
+    </tr>
+    <tr>
+      <td>BCApps-4699</td>
+      <td>Copilot</td>
+      <td>opus-4-6</td>
+      <td>ALDC+conductor</td>
+      <td>✅</td>
+      <td>✅</td>
+      <td>0</td>
+      <td>al-planning-subagent, al-implement-subagent, al-review-subagent</td>
+      <td>8/8</td>
+      <td>32</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="finding critical">
+  <strong>Skills:</strong> 0 invocaciones explicitas en 16 runs ALDC.
+  Las 11 skills existen como archivos .md pero nunca se invocan via tool.
+</div>
+
+<div class="finding critical">
+  <strong>Asimetria de subagentes:</strong> Claude Code: 0% subagent invocation.
+  Copilot: 100% subagent invocation (incluso con developer agent, que no deberia orquestar).
+  Los dos runners ejecutan la misma instruccion ALDC de manera fundamentalmente diferente.
+</div>
+
+<h2>6. Tool Usage (Claude Code only)</h2>
+<table class="dataframe data-table">
+  <thead>
+    <tr style="text-align: right;">
+      <th>Instance</th>
+      <th>Model</th>
+      <th>Scenario</th>
+      <th>Resolved</th>
+      <th>Read</th>
+      <th>Grep</th>
+      <th>Glob</th>
+      <th>Edit</th>
+      <th>Bash</th>
+      <th>Agent</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>BCApps-5633</td>
+      <td>sonnet-4-6</td>
+      <td>Baseline</td>
+      <td>❌</td>
+      <td>30</td>
+      <td>16</td>
+      <td>7</td>
+      <td>6</td>
+      <td>2</td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <td>BCApps-4822</td>
+      <td>sonnet-4-6</td>
+      <td>Baseline</td>
+      <td>✅</td>
+      <td>37</td>
+      <td>17</td>
+      <td>8</td>
+      <td>9</td>
+      <td>4</td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <td>BCApps-4699</td>
+      <td>sonnet-4-6</td>
+      <td>Baseline</td>
+      <td>✅</td>
+      <td>4</td>
+      <td>5</td>
+      <td>1</td>
+      <td>3</td>
+      <td>0</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <td>BCApps-5633</td>
+      <td>sonnet-4-6</td>
+      <td>ALDC+developer</td>
+      <td>❌</td>
+      <td>29</td>
+      <td>0</td>
+      <td>9</td>
+      <td>1</td>
+      <td>8</td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <td>BCApps-4822</td>
+      <td>sonnet-4-6</td>
+      <td>ALDC+developer</td>
+      <td>✅</td>
+      <td>46</td>
+      <td>0</td>
+      <td>12</td>
+      <td>2</td>
+      <td>10</td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <td>BCApps-5633</td>
+      <td>sonnet-4-6</td>
+      <td>ALDC+conductor</td>
+      <td>❌</td>
+      <td>25</td>
+      <td>13</td>
+      <td>8</td>
+      <td>7</td>
+      <td>4</td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <td>BCApps-4822</td>
+      <td>sonnet-4-6</td>
+      <td>ALDC+conductor</td>
+      <td>✅</td>
+      <td>38</td>
+      <td>28</td>
+      <td>9</td>
+      <td>11</td>
+      <td>5</td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <td>BCApps-4699</td>
+      <td>sonnet-4-6</td>
+      <td>ALDC+conductor</td>
+      <td>✅</td>
+      <td>3</td>
+      <td>2</td>
+      <td>0</td>
+      <td>3</td>
+      <td>0</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <td>BCApps-5633</td>
+      <td>opus-4-6</td>
+      <td>Baseline</td>
+      <td>❌</td>
+      <td>47</td>
+      <td>8</td>
+      <td>10</td>
+      <td>2</td>
+      <td>18</td>
+      <td>2</td>
+    </tr>
+    <tr>
+      <td>BCApps-4822</td>
+      <td>opus-4-6</td>
+      <td>Baseline</td>
+      <td>✅</td>
+      <td>96</td>
+      <td>31</td>
+      <td>15</td>
+      <td>8</td>
+      <td>26</td>
+      <td>4</td>
+    </tr>
+    <tr>
+      <td>BCApps-4822</td>
+      <td>opus-4-6</td>
+      <td>ALDC+developer</td>
+      <td>✅</td>
+      <td>9</td>
+      <td>2</td>
+      <td>0</td>
+      <td>4</td>
+      <td>1</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <td>BCApps-4699</td>
+      <td>opus-4-6</td>
+      <td>ALDC+developer</td>
+      <td>✅</td>
+      <td>13</td>
+      <td>10</td>
+      <td>0</td>
+      <td>8</td>
+      <td>1</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <td>BCApps-4822</td>
+      <td>opus-4-6</td>
+      <td>ALDC+conductor</td>
+      <td>✅</td>
+      <td>8</td>
+      <td>5</td>
+      <td>1</td>
+      <td>3</td>
+      <td>0</td>
+      <td>0</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="finding">
+  <strong>Dato contraintuitivo:</strong> Baseline explora <em>mas</em> que ALDC (Read+Grep+Glob),
+  no menos. El ratio exploracion/edicion decrece con ALDC (11.9x &rarr; 8.7x &rarr; 5.8x),
+  sugiriendo que ALDC hace que el agente edite relativamente mas y explore menos.
+</div>
+
+<h2>7. Key Findings / Hallazgos Clave</h2>
+
+<div class="finding critical">
+  <h3>7.1 ALDC no mejora la tasa de bug-fix</h3>
+  <p>Ningun escenario ALDC supera consistentemente al baseline. En BCApps-5633 (Hard), la resolucion
+  viene del modelo (opus) o la persistencia extrema (Copilot, 73 turns), no de las instrucciones ALDC.</p>
+</div>
+
+<div class="finding warning">
+  <h3>7.2 El conductor es demasiado caro para bug-fix</h3>
+  <p>2.8-4.3x overhead de tokens sin mejora en resolucion. Genera soluciones sobre-ingenierizadas:
+  modificaciones GraphQL + campos en tablas para un fix de ~9 lineas.</p>
+</div>
+
+<div class="finding warning">
+  <h3>7.3 El developer es un trade-off ambiguo</h3>
+  <p>Copilot+developer resuelve BCApps-5633 (Hard) donde baseline falla — pero falla en BCApps-4822 (Medium)
+  donde baseline pasa. Claude+developer: mismos resultados que baseline, 3x tokens.</p>
+</div>
+
+<div class="finding">
+  <h3>7.4 El modelo importa mas que el framework</h3>
+  <p>Opus baseline resuelve BCApps-5633 (1/2 runs) donde <strong>ninguna</strong> configuracion Sonnet lo logra.
+  Un upgrade de modelo entrega lo que 300KB de instrucciones no pueden.</p>
+</div>
+
+<div class="finding positive">
+  <h3>7.5 ALDC esta diseñado para otro caso de uso</h3>
+  <p>Bug-fix de ~10 lineas es el <strong>peor caso</strong> para ALDC: maximo overhead, minimo beneficio.
+  ALDC esta diseñado para desarrollo guiado por spec con HITL, TDD completo, y features medianas/grandes.
+  Evaluarlo en bug-fix sin HITL es como evaluar un piloto de F1 en una calle residencial.</p>
+</div>
+
+<h2>8. Recommendations</h2>
+<ol>
+  <li><strong>ALDC pruned:</strong> Cargar solo 3-4 skills relevantes al tipo de tarea (no las 11 completas). Reducir contexto de ~300KB a ~50KB.</li>
+  <li><strong>Baseline context-aware:</strong> Añadir escenario intermedio (solo CLAUDE.md + rules, sin skills/agents) para aislar efecto de instrucciones base.</li>
+  <li><strong>Ablation study:</strong> Baseline &rarr; +CLAUDE.md &rarr; +rules &rarr; +skills &rarr; full ALDC.</li>
+  <li><strong>Test-generation:</strong> Evaluar conductor en su terreno natural (TDD RED&rarr;GREEN&rarr;REFACTOR).</li>
+  <li><strong>Feature-development:</strong> Nuevas tareas donde la orquestacion multi-agente justifique su overhead.</li>
+</ol>
+
+<h2>9. Limitations</h2>
+<table class="data-table">
+  <tr><th>Limitation</th><th>Impact</th></tr>
+  <tr><td>n=3 instances</td><td>No statistical significance possible</td></tr>
+  <tr><td>Mostly single-run</td><td>No variance estimation</td></tr>
+  <tr><td>Sparse matrix</td><td>Not all combinations tested</td></tr>
+  <tr><td>Bug-fix only</td><td>Conductor designed for TDD/test-gen</td></tr>
+  <tr><td>Bench mode</td><td>No HITL gates — not full ALDC</td></tr>
+  <tr><td>Blindness problem</td><td>Cannot verify if model processes instructions</td></tr>
+</table>
+
+<script>
+  Plotly.newPlot('heatmap', {"data":[{"colorscale":[[0,"#bdc3c7"],[0.25,"#e74c3c"],[0.5,"#e74c3c"],[0.625,"#f39c12"],[0.75,"#f39c12"],[1,"#2ecc71"]],"hovertemplate":"\u003cb\u003e%{y}\u003c\u002fb\u003e\u003cbr\u003e%{x}\u003cbr\u003e%{text}\u003cextra\u003e\u003c\u002fextra\u003e","showscale":false,"text":[["\u274c\u003cbr\u003e1140K","\u274c\u003cbr\u003e418K","\u274c\u003cbr\u003e1102K","\u2705\u003cbr\u003e1400K","\u274c\u003cbr\u003e3161K","\u274c\u003cbr\u003e2300K"],["1\u002f2\u003cbr\u003e302K","\u2014","\u2014","\u2014","\u2014","\u2014"],["\u2705\u003cbr\u003e574K","\u2705\u003cbr\u003e1100K","\u2705\u003cbr\u003e1737K","\u274c\u003cbr\u003e1700K","\u2705\u003cbr\u003e2183K","\u2705\u003cbr\u003e1200K"],["\u2705\u003cbr\u003e182K","\u2014","\u2705\u003cbr\u003e689K","\u2705\u003cbr\u003e1300K","\u2705\u003cbr\u003e776K","\u2705\u003cbr\u003e1200K"],["\u2705\u003cbr\u003e333K","\u2014","\u2014","\u2705\u003cbr\u003e1200K","\u2705\u003cbr\u003e464K","\u2014"],["\u2014","\u2705\u003cbr\u003e412K","\u2705\u003cbr\u003e785K","\u2014","\u2014","\u2705\u003cbr\u003e1100K"]],"textfont":{"size":13},"texttemplate":"%{text}","x":["Baseline\u003cbr\u003e\u003csub\u003eClaude Code\u003c\u002fsub\u003e","Baseline\u003cbr\u003e\u003csub\u003eCopilot\u003c\u002fsub\u003e","ALDC+developer\u003cbr\u003e\u003csub\u003eClaude Code\u003c\u002fsub\u003e","ALDC+developer\u003cbr\u003e\u003csub\u003eCopilot\u003c\u002fsub\u003e","ALDC+conductor\u003cbr\u003e\u003csub\u003eClaude Code\u003c\u002fsub\u003e","ALDC+conductor\u003cbr\u003e\u003csub\u003eCopilot\u003c\u002fsub\u003e"],"y":["BCApps-5633 (Hard)\u003cbr\u003e\u003csub\u003esonnet-4-6\u003c\u002fsub\u003e","BCApps-5633 (Hard)\u003cbr\u003e\u003csub\u003eopus-4-6\u003c\u002fsub\u003e","BCApps-4822 (Medium)\u003cbr\u003e\u003csub\u003esonnet-4-6\u003c\u002fsub\u003e","BCApps-4822 (Medium)\u003cbr\u003e\u003csub\u003eopus-4-6\u003c\u002fsub\u003e","BCApps-4699 (Easy)\u003cbr\u003e\u003csub\u003esonnet-4-6\u003c\u002fsub\u003e","BCApps-4699 (Easy)\u003cbr\u003e\u003csub\u003eopus-4-6\u003c\u002fsub\u003e"],"z":[[0.5,0.5,0.5,1.0,0.5,0.5],[0.75,0.0,0.0,0.0,0.0,0.0],[1.0,1.0,1.0,0.5,1.0,1.0],[1.0,0.0,1.0,1.0,1.0,1.0],[1.0,0.0,0.0,1.0,1.0,0.0],[0.0,1.0,1.0,0.0,0.0,1.0]],"type":"heatmap"}],"layout":{"template":{"data":{"histogram2dcontour":[{"type":"histogram2dcontour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"choropleth":[{"type":"choropleth","colorbar":{"outlinewidth":0,"ticks":""}}],"histogram2d":[{"type":"histogram2d","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"heatmap":[{"type":"heatmap","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"contourcarpet":[{"type":"contourcarpet","colorbar":{"outlinewidth":0,"ticks":""}}],"contour":[{"type":"contour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"surface":[{"type":"surface","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"mesh3d":[{"type":"mesh3d","colorbar":{"outlinewidth":0,"ticks":""}}],"scatter":[{"fillpattern":{"fillmode":"overlay","size":10,"solidity":0.2},"type":"scatter"}],"parcoords":[{"type":"parcoords","line":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolargl":[{"type":"scatterpolargl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"bar":[{"error_x":{"color":"#2a3f5f"},"error_y":{"color":"#2a3f5f"},"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"bar"}],"scattergeo":[{"type":"scattergeo","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolar":[{"type":"scatterpolar","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"histogram":[{"marker":{"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"histogram"}],"scattergl":[{"type":"scattergl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatter3d":[{"type":"scatter3d","line":{"colorbar":{"outlinewidth":0,"ticks":""}},"marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermap":[{"type":"scattermap","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermapbox":[{"type":"scattermapbox","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterternary":[{"type":"scatterternary","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattercarpet":[{"type":"scattercarpet","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"carpet":[{"aaxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"baxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"type":"carpet"}],"table":[{"cells":{"fill":{"color":"#EBF0F8"},"line":{"color":"white"}},"header":{"fill":{"color":"#C8D4E3"},"line":{"color":"white"}},"type":"table"}],"barpolar":[{"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"barpolar"}],"pie":[{"automargin":true,"type":"pie"}]},"layout":{"autotypenumbers":"strict","colorway":["#636efa","#EF553B","#00cc96","#ab63fa","#FFA15A","#19d3f3","#FF6692","#B6E880","#FF97FF","#FECB52"],"font":{"color":"#2a3f5f"},"hovermode":"closest","hoverlabel":{"align":"left"},"paper_bgcolor":"white","plot_bgcolor":"#E5ECF6","polar":{"bgcolor":"#E5ECF6","angularaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"radialaxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"ternary":{"bgcolor":"#E5ECF6","aaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"baxis":{"gridcolor":"white","linecolor":"white","ticks":""},"caxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"coloraxis":{"colorbar":{"outlinewidth":0,"ticks":""}},"colorscale":{"sequential":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"sequentialminus":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"diverging":[[0,"#8e0152"],[0.1,"#c51b7d"],[0.2,"#de77ae"],[0.3,"#f1b6da"],[0.4,"#fde0ef"],[0.5,"#f7f7f7"],[0.6,"#e6f5d0"],[0.7,"#b8e186"],[0.8,"#7fbc41"],[0.9,"#4d9221"],[1,"#276419"]]},"xaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"yaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"scene":{"xaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"yaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"zaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2}},"shapedefaults":{"line":{"color":"#2a3f5f"}},"annotationdefaults":{"arrowcolor":"#2a3f5f","arrowhead":0,"arrowwidth":1},"geo":{"bgcolor":"white","landcolor":"#E5ECF6","subunitcolor":"white","showland":true,"showlakes":true,"lakecolor":"white"},"title":{"x":0.05},"mapbox":{"style":"light"}}},"yaxis":{"tickfont":{"size":11},"autorange":"reversed"},"xaxis":{"tickfont":{"size":10},"side":"top"},"margin":{"l":200,"r":20,"t":80,"b":20},"title":{"text":"Resolution Heatmap: ALDC vs Baseline"},"height":480,"width":1000}}.data, {"data":[{"colorscale":[[0,"#bdc3c7"],[0.25,"#e74c3c"],[0.5,"#e74c3c"],[0.625,"#f39c12"],[0.75,"#f39c12"],[1,"#2ecc71"]],"hovertemplate":"\u003cb\u003e%{y}\u003c\u002fb\u003e\u003cbr\u003e%{x}\u003cbr\u003e%{text}\u003cextra\u003e\u003c\u002fextra\u003e","showscale":false,"text":[["\u274c\u003cbr\u003e1140K","\u274c\u003cbr\u003e418K","\u274c\u003cbr\u003e1102K","\u2705\u003cbr\u003e1400K","\u274c\u003cbr\u003e3161K","\u274c\u003cbr\u003e2300K"],["1\u002f2\u003cbr\u003e302K","\u2014","\u2014","\u2014","\u2014","\u2014"],["\u2705\u003cbr\u003e574K","\u2705\u003cbr\u003e1100K","\u2705\u003cbr\u003e1737K","\u274c\u003cbr\u003e1700K","\u2705\u003cbr\u003e2183K","\u2705\u003cbr\u003e1200K"],["\u2705\u003cbr\u003e182K","\u2014","\u2705\u003cbr\u003e689K","\u2705\u003cbr\u003e1300K","\u2705\u003cbr\u003e776K","\u2705\u003cbr\u003e1200K"],["\u2705\u003cbr\u003e333K","\u2014","\u2014","\u2705\u003cbr\u003e1200K","\u2705\u003cbr\u003e464K","\u2014"],["\u2014","\u2705\u003cbr\u003e412K","\u2705\u003cbr\u003e785K","\u2014","\u2014","\u2705\u003cbr\u003e1100K"]],"textfont":{"size":13},"texttemplate":"%{text}","x":["Baseline\u003cbr\u003e\u003csub\u003eClaude Code\u003c\u002fsub\u003e","Baseline\u003cbr\u003e\u003csub\u003eCopilot\u003c\u002fsub\u003e","ALDC+developer\u003cbr\u003e\u003csub\u003eClaude Code\u003c\u002fsub\u003e","ALDC+developer\u003cbr\u003e\u003csub\u003eCopilot\u003c\u002fsub\u003e","ALDC+conductor\u003cbr\u003e\u003csub\u003eClaude Code\u003c\u002fsub\u003e","ALDC+conductor\u003cbr\u003e\u003csub\u003eCopilot\u003c\u002fsub\u003e"],"y":["BCApps-5633 (Hard)\u003cbr\u003e\u003csub\u003esonnet-4-6\u003c\u002fsub\u003e","BCApps-5633 (Hard)\u003cbr\u003e\u003csub\u003eopus-4-6\u003c\u002fsub\u003e","BCApps-4822 (Medium)\u003cbr\u003e\u003csub\u003esonnet-4-6\u003c\u002fsub\u003e","BCApps-4822 (Medium)\u003cbr\u003e\u003csub\u003eopus-4-6\u003c\u002fsub\u003e","BCApps-4699 (Easy)\u003cbr\u003e\u003csub\u003esonnet-4-6\u003c\u002fsub\u003e","BCApps-4699 (Easy)\u003cbr\u003e\u003csub\u003eopus-4-6\u003c\u002fsub\u003e"],"z":[[0.5,0.5,0.5,1.0,0.5,0.5],[0.75,0.0,0.0,0.0,0.0,0.0],[1.0,1.0,1.0,0.5,1.0,1.0],[1.0,0.0,1.0,1.0,1.0,1.0],[1.0,0.0,0.0,1.0,1.0,0.0],[0.0,1.0,1.0,0.0,0.0,1.0]],"type":"heatmap"}],"layout":{"template":{"data":{"histogram2dcontour":[{"type":"histogram2dcontour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"choropleth":[{"type":"choropleth","colorbar":{"outlinewidth":0,"ticks":""}}],"histogram2d":[{"type":"histogram2d","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"heatmap":[{"type":"heatmap","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"contourcarpet":[{"type":"contourcarpet","colorbar":{"outlinewidth":0,"ticks":""}}],"contour":[{"type":"contour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"surface":[{"type":"surface","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"mesh3d":[{"type":"mesh3d","colorbar":{"outlinewidth":0,"ticks":""}}],"scatter":[{"fillpattern":{"fillmode":"overlay","size":10,"solidity":0.2},"type":"scatter"}],"parcoords":[{"type":"parcoords","line":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolargl":[{"type":"scatterpolargl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"bar":[{"error_x":{"color":"#2a3f5f"},"error_y":{"color":"#2a3f5f"},"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"bar"}],"scattergeo":[{"type":"scattergeo","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolar":[{"type":"scatterpolar","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"histogram":[{"marker":{"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"histogram"}],"scattergl":[{"type":"scattergl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatter3d":[{"type":"scatter3d","line":{"colorbar":{"outlinewidth":0,"ticks":""}},"marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermap":[{"type":"scattermap","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermapbox":[{"type":"scattermapbox","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterternary":[{"type":"scatterternary","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattercarpet":[{"type":"scattercarpet","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"carpet":[{"aaxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"baxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"type":"carpet"}],"table":[{"cells":{"fill":{"color":"#EBF0F8"},"line":{"color":"white"}},"header":{"fill":{"color":"#C8D4E3"},"line":{"color":"white"}},"type":"table"}],"barpolar":[{"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"barpolar"}],"pie":[{"automargin":true,"type":"pie"}]},"layout":{"autotypenumbers":"strict","colorway":["#636efa","#EF553B","#00cc96","#ab63fa","#FFA15A","#19d3f3","#FF6692","#B6E880","#FF97FF","#FECB52"],"font":{"color":"#2a3f5f"},"hovermode":"closest","hoverlabel":{"align":"left"},"paper_bgcolor":"white","plot_bgcolor":"#E5ECF6","polar":{"bgcolor":"#E5ECF6","angularaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"radialaxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"ternary":{"bgcolor":"#E5ECF6","aaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"baxis":{"gridcolor":"white","linecolor":"white","ticks":""},"caxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"coloraxis":{"colorbar":{"outlinewidth":0,"ticks":""}},"colorscale":{"sequential":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"sequentialminus":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"diverging":[[0,"#8e0152"],[0.1,"#c51b7d"],[0.2,"#de77ae"],[0.3,"#f1b6da"],[0.4,"#fde0ef"],[0.5,"#f7f7f7"],[0.6,"#e6f5d0"],[0.7,"#b8e186"],[0.8,"#7fbc41"],[0.9,"#4d9221"],[1,"#276419"]]},"xaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"yaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"scene":{"xaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"yaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"zaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2}},"shapedefaults":{"line":{"color":"#2a3f5f"}},"annotationdefaults":{"arrowcolor":"#2a3f5f","arrowhead":0,"arrowwidth":1},"geo":{"bgcolor":"white","landcolor":"#E5ECF6","subunitcolor":"white","showland":true,"showlakes":true,"lakecolor":"white"},"title":{"x":0.05},"mapbox":{"style":"light"}}},"yaxis":{"tickfont":{"size":11},"autorange":"reversed"},"xaxis":{"tickfont":{"size":10},"side":"top"},"margin":{"l":200,"r":20,"t":80,"b":20},"title":{"text":"Resolution Heatmap: ALDC vs Baseline"},"height":480,"width":1000}}.layout);
+  Plotly.newPlot('tokens', {"data":[{"marker":{"color":["#e74c3c","#e74c3c","#e74c3c","#2ecc71","#e74c3c","#e74c3c","#e74c3c"]},"showlegend":false,"text":["\u274c 3161K","\u274c 2300K","\u274c 1102K","\u2705 1400K","\u274c 327K","\u274c 1140K","\u274c 418K"],"textfont":{"size":9},"textposition":"outside","x":["ALDC+conductor\u003cbr\u003eClaude Code\u003cbr\u003e\u003csub\u003esonnet-4-6\u003c\u002fsub\u003e","ALDC+conductor\u003cbr\u003eCopilot\u003cbr\u003e\u003csub\u003esonnet-4-6\u003c\u002fsub\u003e","ALDC+developer\u003cbr\u003eClaude Code\u003cbr\u003e\u003csub\u003esonnet-4-6\u003c\u002fsub\u003e","ALDC+developer\u003cbr\u003eCopilot\u003cbr\u003e\u003csub\u003esonnet-4-6\u003c\u002fsub\u003e","Baseline\u003cbr\u003eClaude Code\u003cbr\u003e\u003csub\u003eopus-4-6\u003c\u002fsub\u003e","Baseline\u003cbr\u003eClaude Code\u003cbr\u003e\u003csub\u003esonnet-4-6\u003c\u002fsub\u003e","Baseline\u003cbr\u003eCopilot\u003cbr\u003e\u003csub\u003esonnet-4-6\u003c\u002fsub\u003e"],"y":{"dtype":"f8","bdata":"yXa+n1qyqEAAAAAAAPihQJ7vp8bLOZFAAAAAAADglUB56SYxCGx0QC\u002fdJAYBz5FAAAAAAAAgekA="},"type":"bar","xaxis":"x","yaxis":"y"},{"marker":{"color":["#2ecc71","#2ecc71","#2ecc71","#2ecc71","#2ecc71","#2ecc71","#2ecc71","#e74c3c","#2ecc71","#2ecc71","#2ecc71"]},"showlegend":false,"text":["\u2705 776K","\u2705 2183K","\u2705 1200K","\u2705 1200K","\u2705 689K","\u2705 1737K","\u2705 1300K","\u274c 1700K","\u2705 182K","\u2705 574K","\u2705 1100K"],"textfont":{"size":9},"textposition":"outside","x":["ALDC+conductor\u003cbr\u003eClaude Code\u003cbr\u003e\u003csub\u003eopus-4-6\u003c\u002fsub\u003e","ALDC+conductor\u003cbr\u003eClaude Code\u003cbr\u003e\u003csub\u003esonnet-4-6\u003c\u002fsub\u003e","ALDC+conductor\u003cbr\u003eCopilot\u003cbr\u003e\u003csub\u003eopus-4-6\u003c\u002fsub\u003e","ALDC+conductor\u003cbr\u003eCopilot\u003cbr\u003e\u003csub\u003esonnet-4-6\u003c\u002fsub\u003e","ALDC+developer\u003cbr\u003eClaude Code\u003cbr\u003e\u003csub\u003eopus-4-6\u003c\u002fsub\u003e","ALDC+developer\u003cbr\u003eClaude Code\u003cbr\u003e\u003csub\u003esonnet-4-6\u003c\u002fsub\u003e","ALDC+developer\u003cbr\u003eCopilot\u003cbr\u003e\u003csub\u003eopus-4-6\u003c\u002fsub\u003e","ALDC+developer\u003cbr\u003eCopilot\u003cbr\u003e\u003csub\u003esonnet-4-6\u003c\u002fsub\u003e","Baseline\u003cbr\u003eClaude Code\u003cbr\u003e\u003csub\u003eopus-4-6\u003c\u002fsub\u003e","Baseline\u003cbr\u003eClaude Code\u003cbr\u003e\u003csub\u003esonnet-4-6\u003c\u002fsub\u003e","Baseline\u003cbr\u003eCopilot\u003cbr\u003e\u003csub\u003esonnet-4-6\u003c\u002fsub\u003e"],"y":{"dtype":"f8","bdata":"mpmZmZlAiEAzMzMzMw2hQAAAAAAAwJJAAAAAAADAkkDpJjEIrImFQOxRuB4FI5tAAAAAAABQlEAAAAAAAJCaQMP1KFyPzmZAK4cW2c7zgUAAAAAAADCRQA=="},"type":"bar","xaxis":"x2","yaxis":"y2"},{"marker":{"color":["#2ecc71","#2ecc71","#2ecc71","#2ecc71","#2ecc71","#2ecc71"]},"showlegend":false,"text":["\u2705 464K","\u2705 1100K","\u2705 785K","\u2705 1200K","\u2705 333K","\u2705 412K"],"textfont":{"size":9},"textposition":"outside","x":["ALDC+conductor\u003cbr\u003eClaude Code\u003cbr\u003e\u003csub\u003esonnet-4-6\u003c\u002fsub\u003e","ALDC+conductor\u003cbr\u003eCopilot\u003cbr\u003e\u003csub\u003eopus-4-6\u003c\u002fsub\u003e","ALDC+developer\u003cbr\u003eClaude Code\u003cbr\u003e\u003csub\u003eopus-4-6\u003c\u002fsub\u003e","ALDC+developer\u003cbr\u003eCopilot\u003cbr\u003e\u003csub\u003esonnet-4-6\u003c\u002fsub\u003e","Baseline\u003cbr\u003eClaude Code\u003cbr\u003e\u003csub\u003esonnet-4-6\u003c\u002fsub\u003e","Baseline\u003cbr\u003eCopilot\u003cbr\u003e\u003csub\u003eopus-4-6\u003c\u002fsub\u003e"],"y":{"dtype":"f8","bdata":"BFYOLbIBfUAAAAAAADCRQFyPwvUohohAAAAAAADAkkCHFtnO9890QM3MzMzMxHlA"},"type":"bar","xaxis":"x3","yaxis":"y3"}],"layout":{"template":{"data":{"histogram2dcontour":[{"type":"histogram2dcontour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"choropleth":[{"type":"choropleth","colorbar":{"outlinewidth":0,"ticks":""}}],"histogram2d":[{"type":"histogram2d","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"heatmap":[{"type":"heatmap","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"contourcarpet":[{"type":"contourcarpet","colorbar":{"outlinewidth":0,"ticks":""}}],"contour":[{"type":"contour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"surface":[{"type":"surface","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"mesh3d":[{"type":"mesh3d","colorbar":{"outlinewidth":0,"ticks":""}}],"scatter":[{"fillpattern":{"fillmode":"overlay","size":10,"solidity":0.2},"type":"scatter"}],"parcoords":[{"type":"parcoords","line":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolargl":[{"type":"scatterpolargl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"bar":[{"error_x":{"color":"#2a3f5f"},"error_y":{"color":"#2a3f5f"},"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"bar"}],"scattergeo":[{"type":"scattergeo","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolar":[{"type":"scatterpolar","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"histogram":[{"marker":{"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"histogram"}],"scattergl":[{"type":"scattergl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatter3d":[{"type":"scatter3d","line":{"colorbar":{"outlinewidth":0,"ticks":""}},"marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermap":[{"type":"scattermap","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermapbox":[{"type":"scattermapbox","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterternary":[{"type":"scatterternary","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattercarpet":[{"type":"scattercarpet","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"carpet":[{"aaxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"baxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"type":"carpet"}],"table":[{"cells":{"fill":{"color":"#EBF0F8"},"line":{"color":"white"}},"header":{"fill":{"color":"#C8D4E3"},"line":{"color":"white"}},"type":"table"}],"barpolar":[{"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"barpolar"}],"pie":[{"automargin":true,"type":"pie"}]},"layout":{"autotypenumbers":"strict","colorway":["#636efa","#EF553B","#00cc96","#ab63fa","#FFA15A","#19d3f3","#FF6692","#B6E880","#FF97FF","#FECB52"],"font":{"color":"#2a3f5f"},"hovermode":"closest","hoverlabel":{"align":"left"},"paper_bgcolor":"white","plot_bgcolor":"#E5ECF6","polar":{"bgcolor":"#E5ECF6","angularaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"radialaxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"ternary":{"bgcolor":"#E5ECF6","aaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"baxis":{"gridcolor":"white","linecolor":"white","ticks":""},"caxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"coloraxis":{"colorbar":{"outlinewidth":0,"ticks":""}},"colorscale":{"sequential":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"sequentialminus":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"diverging":[[0,"#8e0152"],[0.1,"#c51b7d"],[0.2,"#de77ae"],[0.3,"#f1b6da"],[0.4,"#fde0ef"],[0.5,"#f7f7f7"],[0.6,"#e6f5d0"],[0.7,"#b8e186"],[0.8,"#7fbc41"],[0.9,"#4d9221"],[1,"#276419"]]},"xaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"yaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"scene":{"xaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"yaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"zaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2}},"shapedefaults":{"line":{"color":"#2a3f5f"}},"annotationdefaults":{"arrowcolor":"#2a3f5f","arrowhead":0,"arrowwidth":1},"geo":{"bgcolor":"white","landcolor":"#E5ECF6","subunitcolor":"white","showland":true,"showlakes":true,"lakecolor":"white"},"title":{"x":0.05},"mapbox":{"style":"light"}}},"xaxis":{"anchor":"y","domain":[0.0,0.2888888888888889]},"yaxis":{"anchor":"x","domain":[0.0,1.0],"title":{"text":"Prompt tokens (K)"}},"xaxis2":{"anchor":"y2","domain":[0.35555555555555557,0.6444444444444445]},"yaxis2":{"anchor":"x2","domain":[0.0,1.0],"matches":"y","showticklabels":false},"xaxis3":{"anchor":"y3","domain":[0.7111111111111111,1.0]},"yaxis3":{"anchor":"x3","domain":[0.0,1.0],"matches":"y","showticklabels":false},"annotations":[{"font":{"size":16},"showarrow":false,"text":"BCApps-5633 (Hard)","x":0.14444444444444446,"xanchor":"center","xref":"paper","y":1.0,"yanchor":"bottom","yref":"paper"},{"font":{"size":16},"showarrow":false,"text":"BCApps-4822 (Medium)","x":0.5,"xanchor":"center","xref":"paper","y":1.0,"yanchor":"bottom","yref":"paper"},{"font":{"size":16},"showarrow":false,"text":"BCApps-4699 (Easy)","x":0.8555555555555556,"xanchor":"center","xref":"paper","y":1.0,"yanchor":"bottom","yref":"paper"}],"title":{"text":"Prompt Tokens por configuracion (verde=resolved, rojo=failed)"},"height":500,"width":1200}}.data, {"data":[{"marker":{"color":["#e74c3c","#e74c3c","#e74c3c","#2ecc71","#e74c3c","#e74c3c","#e74c3c"]},"showlegend":false,"text":["\u274c 3161K","\u274c 2300K","\u274c 1102K","\u2705 1400K","\u274c 327K","\u274c 1140K","\u274c 418K"],"textfont":{"size":9},"textposition":"outside","x":["ALDC+conductor\u003cbr\u003eClaude Code\u003cbr\u003e\u003csub\u003esonnet-4-6\u003c\u002fsub\u003e","ALDC+conductor\u003cbr\u003eCopilot\u003cbr\u003e\u003csub\u003esonnet-4-6\u003c\u002fsub\u003e","ALDC+developer\u003cbr\u003eClaude Code\u003cbr\u003e\u003csub\u003esonnet-4-6\u003c\u002fsub\u003e","ALDC+developer\u003cbr\u003eCopilot\u003cbr\u003e\u003csub\u003esonnet-4-6\u003c\u002fsub\u003e","Baseline\u003cbr\u003eClaude Code\u003cbr\u003e\u003csub\u003eopus-4-6\u003c\u002fsub\u003e","Baseline\u003cbr\u003eClaude Code\u003cbr\u003e\u003csub\u003esonnet-4-6\u003c\u002fsub\u003e","Baseline\u003cbr\u003eCopilot\u003cbr\u003e\u003csub\u003esonnet-4-6\u003c\u002fsub\u003e"],"y":{"dtype":"f8","bdata":"yXa+n1qyqEAAAAAAAPihQJ7vp8bLOZFAAAAAAADglUB56SYxCGx0QC\u002fdJAYBz5FAAAAAAAAgekA="},"type":"bar","xaxis":"x","yaxis":"y"},{"marker":{"color":["#2ecc71","#2ecc71","#2ecc71","#2ecc71","#2ecc71","#2ecc71","#2ecc71","#e74c3c","#2ecc71","#2ecc71","#2ecc71"]},"showlegend":false,"text":["\u2705 776K","\u2705 2183K","\u2705 1200K","\u2705 1200K","\u2705 689K","\u2705 1737K","\u2705 1300K","\u274c 1700K","\u2705 182K","\u2705 574K","\u2705 1100K"],"textfont":{"size":9},"textposition":"outside","x":["ALDC+conductor\u003cbr\u003eClaude Code\u003cbr\u003e\u003csub\u003eopus-4-6\u003c\u002fsub\u003e","ALDC+conductor\u003cbr\u003eClaude Code\u003cbr\u003e\u003csub\u003esonnet-4-6\u003c\u002fsub\u003e","ALDC+conductor\u003cbr\u003eCopilot\u003cbr\u003e\u003csub\u003eopus-4-6\u003c\u002fsub\u003e","ALDC+conductor\u003cbr\u003eCopilot\u003cbr\u003e\u003csub\u003esonnet-4-6\u003c\u002fsub\u003e","ALDC+developer\u003cbr\u003eClaude Code\u003cbr\u003e\u003csub\u003eopus-4-6\u003c\u002fsub\u003e","ALDC+developer\u003cbr\u003eClaude Code\u003cbr\u003e\u003csub\u003esonnet-4-6\u003c\u002fsub\u003e","ALDC+developer\u003cbr\u003eCopilot\u003cbr\u003e\u003csub\u003eopus-4-6\u003c\u002fsub\u003e","ALDC+developer\u003cbr\u003eCopilot\u003cbr\u003e\u003csub\u003esonnet-4-6\u003c\u002fsub\u003e","Baseline\u003cbr\u003eClaude Code\u003cbr\u003e\u003csub\u003eopus-4-6\u003c\u002fsub\u003e","Baseline\u003cbr\u003eClaude Code\u003cbr\u003e\u003csub\u003esonnet-4-6\u003c\u002fsub\u003e","Baseline\u003cbr\u003eCopilot\u003cbr\u003e\u003csub\u003esonnet-4-6\u003c\u002fsub\u003e"],"y":{"dtype":"f8","bdata":"mpmZmZlAiEAzMzMzMw2hQAAAAAAAwJJAAAAAAADAkkDpJjEIrImFQOxRuB4FI5tAAAAAAABQlEAAAAAAAJCaQMP1KFyPzmZAK4cW2c7zgUAAAAAAADCRQA=="},"type":"bar","xaxis":"x2","yaxis":"y2"},{"marker":{"color":["#2ecc71","#2ecc71","#2ecc71","#2ecc71","#2ecc71","#2ecc71"]},"showlegend":false,"text":["\u2705 464K","\u2705 1100K","\u2705 785K","\u2705 1200K","\u2705 333K","\u2705 412K"],"textfont":{"size":9},"textposition":"outside","x":["ALDC+conductor\u003cbr\u003eClaude Code\u003cbr\u003e\u003csub\u003esonnet-4-6\u003c\u002fsub\u003e","ALDC+conductor\u003cbr\u003eCopilot\u003cbr\u003e\u003csub\u003eopus-4-6\u003c\u002fsub\u003e","ALDC+developer\u003cbr\u003eClaude Code\u003cbr\u003e\u003csub\u003eopus-4-6\u003c\u002fsub\u003e","ALDC+developer\u003cbr\u003eCopilot\u003cbr\u003e\u003csub\u003esonnet-4-6\u003c\u002fsub\u003e","Baseline\u003cbr\u003eClaude Code\u003cbr\u003e\u003csub\u003esonnet-4-6\u003c\u002fsub\u003e","Baseline\u003cbr\u003eCopilot\u003cbr\u003e\u003csub\u003eopus-4-6\u003c\u002fsub\u003e"],"y":{"dtype":"f8","bdata":"BFYOLbIBfUAAAAAAADCRQFyPwvUohohAAAAAAADAkkCHFtnO9890QM3MzMzMxHlA"},"type":"bar","xaxis":"x3","yaxis":"y3"}],"layout":{"template":{"data":{"histogram2dcontour":[{"type":"histogram2dcontour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"choropleth":[{"type":"choropleth","colorbar":{"outlinewidth":0,"ticks":""}}],"histogram2d":[{"type":"histogram2d","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"heatmap":[{"type":"heatmap","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"contourcarpet":[{"type":"contourcarpet","colorbar":{"outlinewidth":0,"ticks":""}}],"contour":[{"type":"contour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"surface":[{"type":"surface","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"mesh3d":[{"type":"mesh3d","colorbar":{"outlinewidth":0,"ticks":""}}],"scatter":[{"fillpattern":{"fillmode":"overlay","size":10,"solidity":0.2},"type":"scatter"}],"parcoords":[{"type":"parcoords","line":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolargl":[{"type":"scatterpolargl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"bar":[{"error_x":{"color":"#2a3f5f"},"error_y":{"color":"#2a3f5f"},"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"bar"}],"scattergeo":[{"type":"scattergeo","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolar":[{"type":"scatterpolar","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"histogram":[{"marker":{"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"histogram"}],"scattergl":[{"type":"scattergl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatter3d":[{"type":"scatter3d","line":{"colorbar":{"outlinewidth":0,"ticks":""}},"marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermap":[{"type":"scattermap","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermapbox":[{"type":"scattermapbox","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterternary":[{"type":"scatterternary","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattercarpet":[{"type":"scattercarpet","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"carpet":[{"aaxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"baxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"type":"carpet"}],"table":[{"cells":{"fill":{"color":"#EBF0F8"},"line":{"color":"white"}},"header":{"fill":{"color":"#C8D4E3"},"line":{"color":"white"}},"type":"table"}],"barpolar":[{"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"barpolar"}],"pie":[{"automargin":true,"type":"pie"}]},"layout":{"autotypenumbers":"strict","colorway":["#636efa","#EF553B","#00cc96","#ab63fa","#FFA15A","#19d3f3","#FF6692","#B6E880","#FF97FF","#FECB52"],"font":{"color":"#2a3f5f"},"hovermode":"closest","hoverlabel":{"align":"left"},"paper_bgcolor":"white","plot_bgcolor":"#E5ECF6","polar":{"bgcolor":"#E5ECF6","angularaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"radialaxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"ternary":{"bgcolor":"#E5ECF6","aaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"baxis":{"gridcolor":"white","linecolor":"white","ticks":""},"caxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"coloraxis":{"colorbar":{"outlinewidth":0,"ticks":""}},"colorscale":{"sequential":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"sequentialminus":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"diverging":[[0,"#8e0152"],[0.1,"#c51b7d"],[0.2,"#de77ae"],[0.3,"#f1b6da"],[0.4,"#fde0ef"],[0.5,"#f7f7f7"],[0.6,"#e6f5d0"],[0.7,"#b8e186"],[0.8,"#7fbc41"],[0.9,"#4d9221"],[1,"#276419"]]},"xaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"yaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"scene":{"xaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"yaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"zaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2}},"shapedefaults":{"line":{"color":"#2a3f5f"}},"annotationdefaults":{"arrowcolor":"#2a3f5f","arrowhead":0,"arrowwidth":1},"geo":{"bgcolor":"white","landcolor":"#E5ECF6","subunitcolor":"white","showland":true,"showlakes":true,"lakecolor":"white"},"title":{"x":0.05},"mapbox":{"style":"light"}}},"xaxis":{"anchor":"y","domain":[0.0,0.2888888888888889]},"yaxis":{"anchor":"x","domain":[0.0,1.0],"title":{"text":"Prompt tokens (K)"}},"xaxis2":{"anchor":"y2","domain":[0.35555555555555557,0.6444444444444445]},"yaxis2":{"anchor":"x2","domain":[0.0,1.0],"matches":"y","showticklabels":false},"xaxis3":{"anchor":"y3","domain":[0.7111111111111111,1.0]},"yaxis3":{"anchor":"x3","domain":[0.0,1.0],"matches":"y","showticklabels":false},"annotations":[{"font":{"size":16},"showarrow":false,"text":"BCApps-5633 (Hard)","x":0.14444444444444446,"xanchor":"center","xref":"paper","y":1.0,"yanchor":"bottom","yref":"paper"},{"font":{"size":16},"showarrow":false,"text":"BCApps-4822 (Medium)","x":0.5,"xanchor":"center","xref":"paper","y":1.0,"yanchor":"bottom","yref":"paper"},{"font":{"size":16},"showarrow":false,"text":"BCApps-4699 (Easy)","x":0.8555555555555556,"xanchor":"center","xref":"paper","y":1.0,"yanchor":"bottom","yref":"paper"}],"title":{"text":"Prompt Tokens por configuracion (verde=resolved, rojo=failed)"},"height":500,"width":1200}}.layout);
+  Plotly.newPlot('efficiency', {"data":[{"marker":{"color":"#3498db"},"name":"Baseline","showlegend":true,"text":["\u2705 15","\u2705 15","\u2705 11","\u2705 16","\u2705 30","\u274c 13","\u274c 26","\u274c 13"],"textfont":{"size":8},"textposition":"outside","x":["BCApps-4699\u003cbr\u003eClaude Code\u003cbr\u003e\u003csub\u003esonnet-4-6\u003c\u002fsub\u003e","BCApps-4699\u003cbr\u003eCopilot\u003cbr\u003e\u003csub\u003eopus-4-6\u003c\u002fsub\u003e","BCApps-4822\u003cbr\u003eClaude Code\u003cbr\u003e\u003csub\u003eopus-4-6\u003c\u002fsub\u003e","BCApps-4822\u003cbr\u003eClaude Code\u003cbr\u003e\u003csub\u003esonnet-4-6\u003c\u002fsub\u003e","BCApps-4822\u003cbr\u003eCopilot\u003cbr\u003e\u003csub\u003esonnet-4-6\u003c\u002fsub\u003e","BCApps-5633\u003cbr\u003eClaude Code\u003cbr\u003e\u003csub\u003eopus-4-6\u003c\u002fsub\u003e","BCApps-5633\u003cbr\u003eClaude Code\u003cbr\u003e\u003csub\u003esonnet-4-6\u003c\u002fsub\u003e","BCApps-5633\u003cbr\u003eCopilot\u003cbr\u003e\u003csub\u003esonnet-4-6\u003c\u002fsub\u003e"],"y":{"dtype":"i1","bdata":"Dw8LEB4NGg0="},"type":"bar","xaxis":"x","yaxis":"y"},{"marker":{"color":"#e67e22"},"name":"ALDC+developer","showlegend":true,"text":["\u2705 21","\u2705 23","\u2705 17","\u2705 25","\u2705 22","\u274c 26","\u274c 22","\u2705 73"],"textfont":{"size":8},"textposition":"outside","x":["BCApps-4699\u003cbr\u003eClaude Code\u003cbr\u003e\u003csub\u003eopus-4-6\u003c\u002fsub\u003e","BCApps-4699\u003cbr\u003eCopilot\u003cbr\u003e\u003csub\u003esonnet-4-6\u003c\u002fsub\u003e","BCApps-4822\u003cbr\u003eClaude Code\u003cbr\u003e\u003csub\u003eopus-4-6\u003c\u002fsub\u003e","BCApps-4822\u003cbr\u003eClaude Code\u003cbr\u003e\u003csub\u003esonnet-4-6\u003c\u002fsub\u003e","BCApps-4822\u003cbr\u003eCopilot\u003cbr\u003e\u003csub\u003eopus-4-6\u003c\u002fsub\u003e","BCApps-4822\u003cbr\u003eCopilot\u003cbr\u003e\u003csub\u003esonnet-4-6\u003c\u002fsub\u003e","BCApps-5633\u003cbr\u003eClaude Code\u003cbr\u003e\u003csub\u003esonnet-4-6\u003c\u002fsub\u003e","BCApps-5633\u003cbr\u003eCopilot\u003cbr\u003e\u003csub\u003esonnet-4-6\u003c\u002fsub\u003e"],"y":{"dtype":"i1","bdata":"FRcRGRYaFkk="},"type":"bar","xaxis":"x","yaxis":"y"},{"marker":{"color":"#9b59b6"},"name":"ALDC+conductor","showlegend":true,"text":["\u2705 9","\u2705 22","\u2705 18","\u2705 35","\u2705 21","\u2705 24","\u274c 40","\u274c 31"],"textfont":{"size":8},"textposition":"outside","x":["BCApps-4699\u003cbr\u003eClaude Code\u003cbr\u003e\u003csub\u003esonnet-4-6\u003c\u002fsub\u003e","BCApps-4699\u003cbr\u003eCopilot\u003cbr\u003e\u003csub\u003eopus-4-6\u003c\u002fsub\u003e","BCApps-4822\u003cbr\u003eClaude Code\u003cbr\u003e\u003csub\u003eopus-4-6\u003c\u002fsub\u003e","BCApps-4822\u003cbr\u003eClaude Code\u003cbr\u003e\u003csub\u003esonnet-4-6\u003c\u002fsub\u003e","BCApps-4822\u003cbr\u003eCopilot\u003cbr\u003e\u003csub\u003eopus-4-6\u003c\u002fsub\u003e","BCApps-4822\u003cbr\u003eCopilot\u003cbr\u003e\u003csub\u003esonnet-4-6\u003c\u002fsub\u003e","BCApps-5633\u003cbr\u003eClaude Code\u003cbr\u003e\u003csub\u003esonnet-4-6\u003c\u002fsub\u003e","BCApps-5633\u003cbr\u003eCopilot\u003cbr\u003e\u003csub\u003esonnet-4-6\u003c\u002fsub\u003e"],"y":{"dtype":"i1","bdata":"CRYSIxUYKB8="},"type":"bar","xaxis":"x","yaxis":"y"},{"marker":{"color":"#3498db"},"name":"Baseline","showlegend":false,"text":["\u2705 65","\u2705 120","\u2705 119","\u2705 135","\u2705 899","\u274c 366","\u274c 460","\u274c 273"],"textfont":{"size":8},"textposition":"outside","x":["BCApps-4699\u003cbr\u003eClaude Code\u003cbr\u003e\u003csub\u003esonnet-4-6\u003c\u002fsub\u003e","BCApps-4699\u003cbr\u003eCopilot\u003cbr\u003e\u003csub\u003eopus-4-6\u003c\u002fsub\u003e","BCApps-4822\u003cbr\u003eClaude Code\u003cbr\u003e\u003csub\u003eopus-4-6\u003c\u002fsub\u003e","BCApps-4822\u003cbr\u003eClaude Code\u003cbr\u003e\u003csub\u003esonnet-4-6\u003c\u002fsub\u003e","BCApps-4822\u003cbr\u003eCopilot\u003cbr\u003e\u003csub\u003esonnet-4-6\u003c\u002fsub\u003e","BCApps-5633\u003cbr\u003eClaude Code\u003cbr\u003e\u003csub\u003eopus-4-6\u003c\u002fsub\u003e","BCApps-5633\u003cbr\u003eClaude Code\u003cbr\u003e\u003csub\u003esonnet-4-6\u003c\u002fsub\u003e","BCApps-5633\u003cbr\u003eCopilot\u003cbr\u003e\u003csub\u003esonnet-4-6\u003c\u002fsub\u003e"],"y":{"dtype":"f8","bdata":"nMQgsHJIUEAAAAAAAABeQIlBYOXQsl1AuB6F61HcYEAAAAAAABiMQOf7qfHS3XZAoBov3SS4fEAAAAAAABBxQA=="},"type":"bar","xaxis":"x2","yaxis":"y2"},{"marker":{"color":"#e67e22"},"name":"ALDC+developer","showlegend":false,"text":["\u2705 109","\u2705 205","\u2705 127","\u2705 259","\u2705 260","\u274c 482","\u274c 335","\u2705 1269"],"textfont":{"size":8},"textposition":"outside","x":["BCApps-4699\u003cbr\u003eClaude Code\u003cbr\u003e\u003csub\u003eopus-4-6\u003c\u002fsub\u003e","BCApps-4699\u003cbr\u003eCopilot\u003cbr\u003e\u003csub\u003esonnet-4-6\u003c\u002fsub\u003e","BCApps-4822\u003cbr\u003eClaude Code\u003cbr\u003e\u003csub\u003eopus-4-6\u003c\u002fsub\u003e","BCApps-4822\u003cbr\u003eClaude Code\u003cbr\u003e\u003csub\u003esonnet-4-6\u003c\u002fsub\u003e","BCApps-4822\u003cbr\u003eCopilot\u003cbr\u003e\u003csub\u003eopus-4-6\u003c\u002fsub\u003e","BCApps-4822\u003cbr\u003eCopilot\u003cbr\u003e\u003csub\u003esonnet-4-6\u003c\u002fsub\u003e","BCApps-5633\u003cbr\u003eClaude Code\u003cbr\u003e\u003csub\u003esonnet-4-6\u003c\u002fsub\u003e","BCApps-5633\u003cbr\u003eCopilot\u003cbr\u003e\u003csub\u003esonnet-4-6\u003c\u002fsub\u003e"],"y":{"dtype":"f8","bdata":"pHA9CtcrW0AAAAAAAKBpQCcxCKwc2l9AsHJoke0ocEAAAAAAAEBwQAAAAAAAIH5AvHSTGAT2dEAAAAAAANSTQA=="},"type":"bar","xaxis":"x2","yaxis":"y2"},{"marker":{"color":"#9b59b6"},"name":"ALDC+conductor","showlegend":false,"text":["\u2705 61","\u2705 141","\u2705 106","\u2705 227","\u2705 231","\u2705 215","\u274c 627","\u274c 445"],"textfont":{"size":8},"textposition":"outside","x":["BCApps-4699\u003cbr\u003eClaude Code\u003cbr\u003e\u003csub\u003esonnet-4-6\u003c\u002fsub\u003e","BCApps-4699\u003cbr\u003eCopilot\u003cbr\u003e\u003csub\u003eopus-4-6\u003c\u002fsub\u003e","BCApps-4822\u003cbr\u003eClaude Code\u003cbr\u003e\u003csub\u003eopus-4-6\u003c\u002fsub\u003e","BCApps-4822\u003cbr\u003eClaude Code\u003cbr\u003e\u003csub\u003esonnet-4-6\u003c\u002fsub\u003e","BCApps-4822\u003cbr\u003eCopilot\u003cbr\u003e\u003csub\u003eopus-4-6\u003c\u002fsub\u003e","BCApps-4822\u003cbr\u003eCopilot\u003cbr\u003e\u003csub\u003esonnet-4-6\u003c\u002fsub\u003e","BCApps-5633\u003cbr\u003eClaude Code\u003cbr\u003e\u003csub\u003esonnet-4-6\u003c\u002fsub\u003e","BCApps-5633\u003cbr\u003eCopilot\u003cbr\u003e\u003csub\u003esonnet-4-6\u003c\u002fsub\u003e"],"y":{"dtype":"f8","bdata":"UI2XbhJzTkAAAAAAAKBhQNV46SYxeFpAiUFg5dBSbEAAAAAAAOBsQAAAAAAA4GpALbKd76eZg0AAAAAAANB7QA=="},"type":"bar","xaxis":"x2","yaxis":"y2"}],"layout":{"template":{"data":{"histogram2dcontour":[{"type":"histogram2dcontour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"choropleth":[{"type":"choropleth","colorbar":{"outlinewidth":0,"ticks":""}}],"histogram2d":[{"type":"histogram2d","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"heatmap":[{"type":"heatmap","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"contourcarpet":[{"type":"contourcarpet","colorbar":{"outlinewidth":0,"ticks":""}}],"contour":[{"type":"contour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"surface":[{"type":"surface","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"mesh3d":[{"type":"mesh3d","colorbar":{"outlinewidth":0,"ticks":""}}],"scatter":[{"fillpattern":{"fillmode":"overlay","size":10,"solidity":0.2},"type":"scatter"}],"parcoords":[{"type":"parcoords","line":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolargl":[{"type":"scatterpolargl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"bar":[{"error_x":{"color":"#2a3f5f"},"error_y":{"color":"#2a3f5f"},"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"bar"}],"scattergeo":[{"type":"scattergeo","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolar":[{"type":"scatterpolar","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"histogram":[{"marker":{"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"histogram"}],"scattergl":[{"type":"scattergl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatter3d":[{"type":"scatter3d","line":{"colorbar":{"outlinewidth":0,"ticks":""}},"marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermap":[{"type":"scattermap","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermapbox":[{"type":"scattermapbox","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterternary":[{"type":"scatterternary","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattercarpet":[{"type":"scattercarpet","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"carpet":[{"aaxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"baxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"type":"carpet"}],"table":[{"cells":{"fill":{"color":"#EBF0F8"},"line":{"color":"white"}},"header":{"fill":{"color":"#C8D4E3"},"line":{"color":"white"}},"type":"table"}],"barpolar":[{"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"barpolar"}],"pie":[{"automargin":true,"type":"pie"}]},"layout":{"autotypenumbers":"strict","colorway":["#636efa","#EF553B","#00cc96","#ab63fa","#FFA15A","#19d3f3","#FF6692","#B6E880","#FF97FF","#FECB52"],"font":{"color":"#2a3f5f"},"hovermode":"closest","hoverlabel":{"align":"left"},"paper_bgcolor":"white","plot_bgcolor":"#E5ECF6","polar":{"bgcolor":"#E5ECF6","angularaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"radialaxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"ternary":{"bgcolor":"#E5ECF6","aaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"baxis":{"gridcolor":"white","linecolor":"white","ticks":""},"caxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"coloraxis":{"colorbar":{"outlinewidth":0,"ticks":""}},"colorscale":{"sequential":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"sequentialminus":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"diverging":[[0,"#8e0152"],[0.1,"#c51b7d"],[0.2,"#de77ae"],[0.3,"#f1b6da"],[0.4,"#fde0ef"],[0.5,"#f7f7f7"],[0.6,"#e6f5d0"],[0.7,"#b8e186"],[0.8,"#7fbc41"],[0.9,"#4d9221"],[1,"#276419"]]},"xaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"yaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"scene":{"xaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"yaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"zaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2}},"shapedefaults":{"line":{"color":"#2a3f5f"}},"annotationdefaults":{"arrowcolor":"#2a3f5f","arrowhead":0,"arrowwidth":1},"geo":{"bgcolor":"white","landcolor":"#E5ECF6","subunitcolor":"white","showland":true,"showlakes":true,"lakecolor":"white"},"title":{"x":0.05},"mapbox":{"style":"light"}}},"xaxis":{"anchor":"y","domain":[0.0,0.45]},"yaxis":{"anchor":"x","domain":[0.0,1.0]},"xaxis2":{"anchor":"y2","domain":[0.55,1.0]},"yaxis2":{"anchor":"x2","domain":[0.0,1.0]},"annotations":[{"font":{"size":16},"showarrow":false,"text":"Turns","x":0.225,"xanchor":"center","xref":"paper","y":1.0,"yanchor":"bottom","yref":"paper"},{"font":{"size":16},"showarrow":false,"text":"Execution Time (s)","x":0.775,"xanchor":"center","xref":"paper","y":1.0,"yanchor":"bottom","yref":"paper"}],"legend":{"orientation":"h","yanchor":"bottom","y":1.08},"title":{"text":"Eficiencia por configuracion"},"height":500,"width":1200,"barmode":"group"}}.data, {"data":[{"marker":{"color":"#3498db"},"name":"Baseline","showlegend":true,"text":["\u2705 15","\u2705 15","\u2705 11","\u2705 16","\u2705 30","\u274c 13","\u274c 26","\u274c 13"],"textfont":{"size":8},"textposition":"outside","x":["BCApps-4699\u003cbr\u003eClaude Code\u003cbr\u003e\u003csub\u003esonnet-4-6\u003c\u002fsub\u003e","BCApps-4699\u003cbr\u003eCopilot\u003cbr\u003e\u003csub\u003eopus-4-6\u003c\u002fsub\u003e","BCApps-4822\u003cbr\u003eClaude Code\u003cbr\u003e\u003csub\u003eopus-4-6\u003c\u002fsub\u003e","BCApps-4822\u003cbr\u003eClaude Code\u003cbr\u003e\u003csub\u003esonnet-4-6\u003c\u002fsub\u003e","BCApps-4822\u003cbr\u003eCopilot\u003cbr\u003e\u003csub\u003esonnet-4-6\u003c\u002fsub\u003e","BCApps-5633\u003cbr\u003eClaude Code\u003cbr\u003e\u003csub\u003eopus-4-6\u003c\u002fsub\u003e","BCApps-5633\u003cbr\u003eClaude Code\u003cbr\u003e\u003csub\u003esonnet-4-6\u003c\u002fsub\u003e","BCApps-5633\u003cbr\u003eCopilot\u003cbr\u003e\u003csub\u003esonnet-4-6\u003c\u002fsub\u003e"],"y":{"dtype":"i1","bdata":"Dw8LEB4NGg0="},"type":"bar","xaxis":"x","yaxis":"y"},{"marker":{"color":"#e67e22"},"name":"ALDC+developer","showlegend":true,"text":["\u2705 21","\u2705 23","\u2705 17","\u2705 25","\u2705 22","\u274c 26","\u274c 22","\u2705 73"],"textfont":{"size":8},"textposition":"outside","x":["BCApps-4699\u003cbr\u003eClaude Code\u003cbr\u003e\u003csub\u003eopus-4-6\u003c\u002fsub\u003e","BCApps-4699\u003cbr\u003eCopilot\u003cbr\u003e\u003csub\u003esonnet-4-6\u003c\u002fsub\u003e","BCApps-4822\u003cbr\u003eClaude Code\u003cbr\u003e\u003csub\u003eopus-4-6\u003c\u002fsub\u003e","BCApps-4822\u003cbr\u003eClaude Code\u003cbr\u003e\u003csub\u003esonnet-4-6\u003c\u002fsub\u003e","BCApps-4822\u003cbr\u003eCopilot\u003cbr\u003e\u003csub\u003eopus-4-6\u003c\u002fsub\u003e","BCApps-4822\u003cbr\u003eCopilot\u003cbr\u003e\u003csub\u003esonnet-4-6\u003c\u002fsub\u003e","BCApps-5633\u003cbr\u003eClaude Code\u003cbr\u003e\u003csub\u003esonnet-4-6\u003c\u002fsub\u003e","BCApps-5633\u003cbr\u003eCopilot\u003cbr\u003e\u003csub\u003esonnet-4-6\u003c\u002fsub\u003e"],"y":{"dtype":"i1","bdata":"FRcRGRYaFkk="},"type":"bar","xaxis":"x","yaxis":"y"},{"marker":{"color":"#9b59b6"},"name":"ALDC+conductor","showlegend":true,"text":["\u2705 9","\u2705 22","\u2705 18","\u2705 35","\u2705 21","\u2705 24","\u274c 40","\u274c 31"],"textfont":{"size":8},"textposition":"outside","x":["BCApps-4699\u003cbr\u003eClaude Code\u003cbr\u003e\u003csub\u003esonnet-4-6\u003c\u002fsub\u003e","BCApps-4699\u003cbr\u003eCopilot\u003cbr\u003e\u003csub\u003eopus-4-6\u003c\u002fsub\u003e","BCApps-4822\u003cbr\u003eClaude Code\u003cbr\u003e\u003csub\u003eopus-4-6\u003c\u002fsub\u003e","BCApps-4822\u003cbr\u003eClaude Code\u003cbr\u003e\u003csub\u003esonnet-4-6\u003c\u002fsub\u003e","BCApps-4822\u003cbr\u003eCopilot\u003cbr\u003e\u003csub\u003eopus-4-6\u003c\u002fsub\u003e","BCApps-4822\u003cbr\u003eCopilot\u003cbr\u003e\u003csub\u003esonnet-4-6\u003c\u002fsub\u003e","BCApps-5633\u003cbr\u003eClaude Code\u003cbr\u003e\u003csub\u003esonnet-4-6\u003c\u002fsub\u003e","BCApps-5633\u003cbr\u003eCopilot\u003cbr\u003e\u003csub\u003esonnet-4-6\u003c\u002fsub\u003e"],"y":{"dtype":"i1","bdata":"CRYSIxUYKB8="},"type":"bar","xaxis":"x","yaxis":"y"},{"marker":{"color":"#3498db"},"name":"Baseline","showlegend":false,"text":["\u2705 65","\u2705 120","\u2705 119","\u2705 135","\u2705 899","\u274c 366","\u274c 460","\u274c 273"],"textfont":{"size":8},"textposition":"outside","x":["BCApps-4699\u003cbr\u003eClaude Code\u003cbr\u003e\u003csub\u003esonnet-4-6\u003c\u002fsub\u003e","BCApps-4699\u003cbr\u003eCopilot\u003cbr\u003e\u003csub\u003eopus-4-6\u003c\u002fsub\u003e","BCApps-4822\u003cbr\u003eClaude Code\u003cbr\u003e\u003csub\u003eopus-4-6\u003c\u002fsub\u003e","BCApps-4822\u003cbr\u003eClaude Code\u003cbr\u003e\u003csub\u003esonnet-4-6\u003c\u002fsub\u003e","BCApps-4822\u003cbr\u003eCopilot\u003cbr\u003e\u003csub\u003esonnet-4-6\u003c\u002fsub\u003e","BCApps-5633\u003cbr\u003eClaude Code\u003cbr\u003e\u003csub\u003eopus-4-6\u003c\u002fsub\u003e","BCApps-5633\u003cbr\u003eClaude Code\u003cbr\u003e\u003csub\u003esonnet-4-6\u003c\u002fsub\u003e","BCApps-5633\u003cbr\u003eCopilot\u003cbr\u003e\u003csub\u003esonnet-4-6\u003c\u002fsub\u003e"],"y":{"dtype":"f8","bdata":"nMQgsHJIUEAAAAAAAABeQIlBYOXQsl1AuB6F61HcYEAAAAAAABiMQOf7qfHS3XZAoBov3SS4fEAAAAAAABBxQA=="},"type":"bar","xaxis":"x2","yaxis":"y2"},{"marker":{"color":"#e67e22"},"name":"ALDC+developer","showlegend":false,"text":["\u2705 109","\u2705 205","\u2705 127","\u2705 259","\u2705 260","\u274c 482","\u274c 335","\u2705 1269"],"textfont":{"size":8},"textposition":"outside","x":["BCApps-4699\u003cbr\u003eClaude Code\u003cbr\u003e\u003csub\u003eopus-4-6\u003c\u002fsub\u003e","BCApps-4699\u003cbr\u003eCopilot\u003cbr\u003e\u003csub\u003esonnet-4-6\u003c\u002fsub\u003e","BCApps-4822\u003cbr\u003eClaude Code\u003cbr\u003e\u003csub\u003eopus-4-6\u003c\u002fsub\u003e","BCApps-4822\u003cbr\u003eClaude Code\u003cbr\u003e\u003csub\u003esonnet-4-6\u003c\u002fsub\u003e","BCApps-4822\u003cbr\u003eCopilot\u003cbr\u003e\u003csub\u003eopus-4-6\u003c\u002fsub\u003e","BCApps-4822\u003cbr\u003eCopilot\u003cbr\u003e\u003csub\u003esonnet-4-6\u003c\u002fsub\u003e","BCApps-5633\u003cbr\u003eClaude Code\u003cbr\u003e\u003csub\u003esonnet-4-6\u003c\u002fsub\u003e","BCApps-5633\u003cbr\u003eCopilot\u003cbr\u003e\u003csub\u003esonnet-4-6\u003c\u002fsub\u003e"],"y":{"dtype":"f8","bdata":"pHA9CtcrW0AAAAAAAKBpQCcxCKwc2l9AsHJoke0ocEAAAAAAAEBwQAAAAAAAIH5AvHSTGAT2dEAAAAAAANSTQA=="},"type":"bar","xaxis":"x2","yaxis":"y2"},{"marker":{"color":"#9b59b6"},"name":"ALDC+conductor","showlegend":false,"text":["\u2705 61","\u2705 141","\u2705 106","\u2705 227","\u2705 231","\u2705 215","\u274c 627","\u274c 445"],"textfont":{"size":8},"textposition":"outside","x":["BCApps-4699\u003cbr\u003eClaude Code\u003cbr\u003e\u003csub\u003esonnet-4-6\u003c\u002fsub\u003e","BCApps-4699\u003cbr\u003eCopilot\u003cbr\u003e\u003csub\u003eopus-4-6\u003c\u002fsub\u003e","BCApps-4822\u003cbr\u003eClaude Code\u003cbr\u003e\u003csub\u003eopus-4-6\u003c\u002fsub\u003e","BCApps-4822\u003cbr\u003eClaude Code\u003cbr\u003e\u003csub\u003esonnet-4-6\u003c\u002fsub\u003e","BCApps-4822\u003cbr\u003eCopilot\u003cbr\u003e\u003csub\u003eopus-4-6\u003c\u002fsub\u003e","BCApps-4822\u003cbr\u003eCopilot\u003cbr\u003e\u003csub\u003esonnet-4-6\u003c\u002fsub\u003e","BCApps-5633\u003cbr\u003eClaude Code\u003cbr\u003e\u003csub\u003esonnet-4-6\u003c\u002fsub\u003e","BCApps-5633\u003cbr\u003eCopilot\u003cbr\u003e\u003csub\u003esonnet-4-6\u003c\u002fsub\u003e"],"y":{"dtype":"f8","bdata":"UI2XbhJzTkAAAAAAAKBhQNV46SYxeFpAiUFg5dBSbEAAAAAAAOBsQAAAAAAA4GpALbKd76eZg0AAAAAAANB7QA=="},"type":"bar","xaxis":"x2","yaxis":"y2"}],"layout":{"template":{"data":{"histogram2dcontour":[{"type":"histogram2dcontour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"choropleth":[{"type":"choropleth","colorbar":{"outlinewidth":0,"ticks":""}}],"histogram2d":[{"type":"histogram2d","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"heatmap":[{"type":"heatmap","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"contourcarpet":[{"type":"contourcarpet","colorbar":{"outlinewidth":0,"ticks":""}}],"contour":[{"type":"contour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"surface":[{"type":"surface","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"mesh3d":[{"type":"mesh3d","colorbar":{"outlinewidth":0,"ticks":""}}],"scatter":[{"fillpattern":{"fillmode":"overlay","size":10,"solidity":0.2},"type":"scatter"}],"parcoords":[{"type":"parcoords","line":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolargl":[{"type":"scatterpolargl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"bar":[{"error_x":{"color":"#2a3f5f"},"error_y":{"color":"#2a3f5f"},"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"bar"}],"scattergeo":[{"type":"scattergeo","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolar":[{"type":"scatterpolar","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"histogram":[{"marker":{"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"histogram"}],"scattergl":[{"type":"scattergl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatter3d":[{"type":"scatter3d","line":{"colorbar":{"outlinewidth":0,"ticks":""}},"marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermap":[{"type":"scattermap","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermapbox":[{"type":"scattermapbox","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterternary":[{"type":"scatterternary","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattercarpet":[{"type":"scattercarpet","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"carpet":[{"aaxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"baxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"type":"carpet"}],"table":[{"cells":{"fill":{"color":"#EBF0F8"},"line":{"color":"white"}},"header":{"fill":{"color":"#C8D4E3"},"line":{"color":"white"}},"type":"table"}],"barpolar":[{"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"barpolar"}],"pie":[{"automargin":true,"type":"pie"}]},"layout":{"autotypenumbers":"strict","colorway":["#636efa","#EF553B","#00cc96","#ab63fa","#FFA15A","#19d3f3","#FF6692","#B6E880","#FF97FF","#FECB52"],"font":{"color":"#2a3f5f"},"hovermode":"closest","hoverlabel":{"align":"left"},"paper_bgcolor":"white","plot_bgcolor":"#E5ECF6","polar":{"bgcolor":"#E5ECF6","angularaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"radialaxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"ternary":{"bgcolor":"#E5ECF6","aaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"baxis":{"gridcolor":"white","linecolor":"white","ticks":""},"caxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"coloraxis":{"colorbar":{"outlinewidth":0,"ticks":""}},"colorscale":{"sequential":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"sequentialminus":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"diverging":[[0,"#8e0152"],[0.1,"#c51b7d"],[0.2,"#de77ae"],[0.3,"#f1b6da"],[0.4,"#fde0ef"],[0.5,"#f7f7f7"],[0.6,"#e6f5d0"],[0.7,"#b8e186"],[0.8,"#7fbc41"],[0.9,"#4d9221"],[1,"#276419"]]},"xaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"yaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"scene":{"xaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"yaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"zaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2}},"shapedefaults":{"line":{"color":"#2a3f5f"}},"annotationdefaults":{"arrowcolor":"#2a3f5f","arrowhead":0,"arrowwidth":1},"geo":{"bgcolor":"white","landcolor":"#E5ECF6","subunitcolor":"white","showland":true,"showlakes":true,"lakecolor":"white"},"title":{"x":0.05},"mapbox":{"style":"light"}}},"xaxis":{"anchor":"y","domain":[0.0,0.45]},"yaxis":{"anchor":"x","domain":[0.0,1.0]},"xaxis2":{"anchor":"y2","domain":[0.55,1.0]},"yaxis2":{"anchor":"x2","domain":[0.0,1.0]},"annotations":[{"font":{"size":16},"showarrow":false,"text":"Turns","x":0.225,"xanchor":"center","xref":"paper","y":1.0,"yanchor":"bottom","yref":"paper"},{"font":{"size":16},"showarrow":false,"text":"Execution Time (s)","x":0.775,"xanchor":"center","xref":"paper","y":1.0,"yanchor":"bottom","yref":"paper"}],"legend":{"orientation":"h","yanchor":"bottom","y":1.08},"title":{"text":"Eficiencia por configuracion"},"height":500,"width":1200,"barmode":"group"}}.layout);
+</script>
+
+<footer style="margin-top:40px; padding-top:15px; border-top:1px solid #bdc3c7; color:#7f8c8d; font-size:12px;">
+  Generated from BC-Bench evaluation data. See <code>notebooks/bug-fix/aldc-comparison-full.ipynb</code> for interactive analysis.
+</footer>
+</body>
+</html>

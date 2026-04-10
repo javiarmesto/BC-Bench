@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find ./notebook* ./docs -type f)",
+      "Bash(wc -l ./notebooks/aggregate-result/bug-fix/*.jsonl)",
+      "Bash(ls -la ./notebooks/bug-fix/*.ipynb)",
+      "Bash(python3 -m json.tool)",
+      "Bash(xargs grep:*)",
+      "Bash(python3 -c ':*)",
+      "Bash(python3 -c \"import sys,json; d=json.loads\\(sys.stdin.read\\(\\)\\); print\\(json.dumps\\({k:v for k,v in d.items\\(\\) if k != 'generated_patch' and k != 'output'}, indent=2\\)\\)\")",
+      "Bash(python3 -c \"import sys,json; d=json.loads\\(sys.stdin.read\\(\\)\\); print\\(json.dumps\\({k:v for k,v in d.items\\(\\) if k not in \\('generated_patch','output'\\)}, indent=2\\)\\)\")",
+      "Bash(python3 -c 'import json; d=json.loads\\(open\\('\\\\''__TRACKED_VAR__'\\\\''\\).read\\(\\)\\); print\\(json.dumps\\({'\\\\''resolved'\\\\'':d['\\\\''resolved'\\\\''],'\\\\''build'\\\\'':d['\\\\''build'\\\\''],'\\\\''model'\\\\'':d['\\\\''model'\\\\''],'\\\\''agent'\\\\'':d['\\\\''agent_name'\\\\''],'\\\\''turns'\\\\'':d['\\\\''metrics'\\\\'']['\\\\''turn_count'\\\\''],'\\\\''time'\\\\'':d['\\\\''metrics'\\\\'']['\\\\''execution_time'\\\\''],'\\\\''prompt_tokens'\\\\'':d['\\\\''metrics'\\\\'']['\\\\''prompt_tokens'\\\\''],'\\\\''experiment'\\\\'':d['\\\\''experiment'\\\\'']['\\\\''custom_agent'\\\\'']}, indent=2\\)\\)')",
+      "Bash(uv run:*)",
+      "Bash(uv sync:*)"
+    ]
+  }
+}
