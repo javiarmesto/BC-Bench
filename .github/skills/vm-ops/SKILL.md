@@ -1,6 +1,7 @@
 # VM Operations for BC-Bench
 
 ## VM details
+
 - Name: `vm-bcbench`
 - Resource group: `rg-bcbench`
 - Region: West Europe
@@ -12,6 +13,7 @@
 ## Common operations
 
 ### Start / stop
+
 ```powershell
 # Start
 az vm start -g rg-bcbench -n vm-bcbench
@@ -24,6 +26,7 @@ az vm show -g rg-bcbench -n vm-bcbench -d --query "{powerState:powerState,public
 ```
 
 ### Run a full comparison (paste on VM after RDP)
+
 ```powershell
 # 1. Pull latest scripts
 git -C C:\bcbench pull origin claude/explain-repo-usage-2rL3g
@@ -43,6 +46,7 @@ C:\bcbench\scripts\Run-FullComparison.ps1 `
 ```
 
 ### Run pilot NAV-27.0 batch
+
 ```powershell
 git -C C:\bcbench pull origin claude/explain-repo-usage-2rL3g
 $env:GMAIL_APP_PASSWORD = "your-app-password"
@@ -54,25 +58,30 @@ C:\bcbench\scripts\Run-FullComparison.ps1 `
 ```
 
 ### Collect results without re-running
+
 ```powershell
 C:\bcbench\scripts\Run-FullComparison.ps1 -SkipClaude -SkipCopilot -InstanceIds "..."
 # NOTE: This still runs the collect + report + push phases
 ```
 
 ### Check what results exist
+
 ```powershell
 Get-ChildItem C:\bcbench\notebooks\result\bug-fix -Recurse -Filter "*.jsonl" |
     Select-Object Directory, Name | Format-Table -AutoSize
 ```
 
 ### Check Docker containers
+
 ```powershell
 docker ps -a
 docker rm -f $(docker ps -aq)  # Clean all containers
 ```
 
 ## Instructions
+
 When the user asks to:
+
 - **Start the VM** → run `az vm start` and wait for running state
 - **Check VM status** → run `az vm show` with powerState query
 - **Get IP** → parse `publicIps` from `az vm show -d`

@@ -87,12 +87,12 @@ function Write-Fail($msg) { Write-Host "  [!!] $msg" -ForegroundColor Red }
 
 # ── Scenario definitions ────────────────────────────────────────────────────
 $scenarios = @(
-    @{ Agent = "claude"; Scenario = "baseline"; Model = $claudeModel; OutDir = "eval_claude_baseline" }
-    @{ Agent = "claude"; Scenario = "aldc-developer"; Model = $claudeModel; OutDir = "eval_claude_aldc_developer" }
-    @{ Agent = "claude"; Scenario = "aldc-conductor"; Model = $claudeModel; OutDir = "eval_claude_aldc_conductor" }
-    @{ Agent = "copilot"; Scenario = "baseline"; Model = $copilotModel; OutDir = "eval_copilot_baseline" }
-    @{ Agent = "copilot"; Scenario = "aldc-developer"; Model = $copilotModel; OutDir = "eval_copilot_aldc_developer" }
-    @{ Agent = "copilot"; Scenario = "aldc-conductor"; Model = $copilotModel; OutDir = "eval_copilot_aldc_conductor" }
+    @{ Agent = "claude"; Scenario = "baseline"; Model = $claudeModel; OutDir = "eval_claude_baseline_$modelSuffix" }
+    @{ Agent = "claude"; Scenario = "aldc-developer"; Model = $claudeModel; OutDir = "eval_claude_aldc_developer_$modelSuffix" }
+    @{ Agent = "claude"; Scenario = "aldc-conductor"; Model = $claudeModel; OutDir = "eval_claude_aldc_conductor_$modelSuffix" }
+    @{ Agent = "copilot"; Scenario = "baseline"; Model = $copilotModel; OutDir = "eval_copilot_baseline_$modelSuffix" }
+    @{ Agent = "copilot"; Scenario = "aldc-developer"; Model = $copilotModel; OutDir = "eval_copilot_aldc_developer_$modelSuffix" }
+    @{ Agent = "copilot"; Scenario = "aldc-conductor"; Model = $copilotModel; OutDir = "eval_copilot_aldc_conductor_$modelSuffix" }
 )
 
 # ── Run evaluations ──────────────────────────────────────────────────────────
