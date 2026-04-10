@@ -398,20 +398,48 @@ if ($SkipRepoClone) {
 else {
     if (Test-Path $RepoPath) {
         Write-Warn "Removing existing testbed at $RepoPath"
-        $maxRetries = 5
-        for ($retryIdx = 1; $retryIdx -le $maxRetries; $retryIdx++) {
+
+        # Kill processes that may hold file handles
+        foreach ($proc in @("claude", "node", "copilot", "gh", "git")) {
+            taskkill /F /IM "$proc.exe" 2>$null | Out-Null
+        }
+        [GC]::Collect(); [GC]::WaitForPendingFinalizers()
+        Start-Sleep -Seconds 3
+
+        $removed = $false
+        # Strategy 1: PowerShell Remove-Item
+        try {
+            Remove-Item -Path $RepoPath -Recurse -Force -ErrorAction Stop
+            $removed = $true
+        }
+        catch {
+            Write-Warn "Remove-Item failed: $_"
+        }
+
+        # Strategy 2: cmd.exe rd /s /q (bypasses PowerShell handle tracking)
+        if (-not $removed -and (Test-Path $RepoPath)) {
+            Write-Warn "Trying cmd /c rd /s /q..."
+            cmd /c "rd /s /q `"$RepoPath`"" 2>$null
+            Start-Sleep -Seconds 2
+            if (-not (Test-Path $RepoPath)) { $removed = $true }
+        }
+
+        # Strategy 3: Rename out of the way and delete in background
+        if (-not $removed -and (Test-Path $RepoPath)) {
+            $tombstone = "${RepoPath}_delete_$(Get-Random)"
+            Write-Warn "Renaming testbed to $tombstone and deleting in background..."
             try {
-                Remove-Item -Path $RepoPath -Recurse -Force -ErrorAction Stop
-                break
+                Rename-Item $RepoPath $tombstone -Force
+                Start-Job -ScriptBlock { param($p) cmd /c "rd /s /q `"$p`"" } -ArgumentList $tombstone | Out-Null
+                $removed = $true
             }
             catch {
-                if ($retryIdx -eq $maxRetries) { throw }
-                Write-Warn "Testbed locked (attempt $retryIdx/$maxRetries), killing processes and waiting..."
-                foreach ($proc in @("claude", "node", "copilot", "gh", "git")) {
-                    taskkill /F /IM "$proc.exe" 2>$null | Out-Null
-                }
-                Start-Sleep -Seconds 5
+                Write-Warn "Rename also failed: $_"
             }
+        }
+
+        if (-not $removed -and (Test-Path $RepoPath)) {
+            throw "Cannot remove testbed at $RepoPath — a process is holding a lock. Check with: handle.exe $RepoPath"
         }
     }
 

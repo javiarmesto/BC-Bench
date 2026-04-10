@@ -144,6 +144,7 @@ for ($instIdx = 0; $instIdx -lt $instanceCount; $instIdx++) {
         foreach ($proc in @("claude", "node", "copilot", "gh", "git")) {
             taskkill /F /IM "$proc.exe" 2>$null | Out-Null
         }
+        [GC]::Collect(); [GC]::WaitForPendingFinalizers()
         Start-Sleep -Seconds 5
 
         $outDir = Join-Path $BcbenchRoot $s.OutDir
