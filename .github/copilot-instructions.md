@@ -48,3 +48,15 @@ def test_full_metrics_flow_to_success_result(self, sample_context):
 - Challenge or question statistical methods when appropriate (e.g., sample size, assumptions, alternatives)
 - Prefer clear visualizations over complex statistical jargon
 - Use pandas and plotly for data manipulation and visualization
+
+## Custom Skills
+When a user request matches one of the following skills, read the corresponding SKILL.md file BEFORE responding:
+
+| Skill | When to use | File |
+|-------|-------------|------|
+| parse-results | Reading JSONL evaluation results, generating summary tables, comparing scenario outcomes | `.github/skills/parse-results/SKILL.md` |
+| dataset-query | Querying or filtering `dataset/bcbench.jsonl` by version, patch size, repo | `.github/skills/dataset-query/SKILL.md` |
+| trajectory-analysis | Analyzing `.traj.json` files, understanding why an agent failed, comparing agent behavior | `.github/skills/trajectory-analysis/SKILL.md` |
+| vm-ops | Starting/stopping Azure VM `vm-bcbench`, running evaluations remotely, checking VM status | `.github/skills/vm-ops/SKILL.md` |
+| conductor-fix | Fixing conductor agent instructions, wrong-file navigation bug, bug-fix mode guard | `.github/skills/conductor-fix/SKILL.md` |
+| experiment-design | Statistical experiment design, sample size, hypotheses, power analysis for ALDC vs baseline | `.github/skills/experiment-design/SKILL.md` |
