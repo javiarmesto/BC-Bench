@@ -398,7 +398,21 @@ if ($SkipRepoClone) {
 else {
     if (Test-Path $RepoPath) {
         Write-Warn "Removing existing testbed at $RepoPath"
-        Remove-Item -Path $RepoPath -Recurse -Force
+        $maxRetries = 5
+        for ($retryIdx = 1; $retryIdx -le $maxRetries; $retryIdx++) {
+            try {
+                Remove-Item -Path $RepoPath -Recurse -Force -ErrorAction Stop
+                break
+            }
+            catch {
+                if ($retryIdx -eq $maxRetries) { throw }
+                Write-Warn "Testbed locked (attempt $retryIdx/$maxRetries), killing processes and waiting..."
+                foreach ($proc in @("claude", "node", "copilot", "gh")) {
+                    taskkill /F /IM "$proc.exe" 2>$null | Out-Null
+                }
+                Start-Sleep -Seconds 5
+            }
+        }
     }
 
     # Import BC-Bench utilities for clone function

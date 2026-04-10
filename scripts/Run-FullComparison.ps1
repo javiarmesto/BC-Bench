@@ -39,7 +39,7 @@
     .\Run-FullComparison.ps1 -LlmFamily opus -OnlyMissing -EmailTo "you@gmail.com" -AutoShutdown
 #>
 param(
-    [string[]]$InstanceIds = @("microsoft__BCApps-5633"),
+    [string[]]$InstanceIds = @("microsoft__BCApps-4822"),
     [string]$RepoPath = "C:\bcbench\testbed",
     [string]$BcbenchRoot = "C:\bcbench",
     [string]$GitBranch = "claude/explain-repo-usage-2rL3g",
@@ -139,26 +139,13 @@ for ($instIdx = 0; $instIdx -lt $instanceCount; $instIdx++) {
             $runSkipArgs["SkipContainerSetup"] = $true
         }
 
-        # After the first scenario, reset testbed via git instead of re-cloning
-        # (avoids file-lock errors from lingering agent processes)
-        if ($scenarioRanForInstance -and (Test-Path $RepoPath) -and -not $runSkipArgs.ContainsKey("SkipRepoClone")) {
+        # After the first scenario, kill lingering agent processes to release file locks
+        if ($scenarioRanForInstance) {
             Write-Step "Killing lingering agent processes..."
-            Get-Process -Name "claude", "node", "copilot" -ErrorAction SilentlyContinue |
-            Stop-Process -Force -ErrorAction SilentlyContinue
-            Start-Sleep -Seconds 2
-
-            Write-Step "Resetting testbed repo to clean state..."
-            Push-Location $RepoPath
-            try {
-                git checkout -- . 2>$null
-                git clean -fd 2>$null
-                Write-Ok "Testbed reset via git"
-                $runSkipArgs["SkipRepoClone"] = $true
+            foreach ($proc in @("claude", "node", "copilot", "gh")) {
+                taskkill /F /IM "$proc.exe" 2>$null | Out-Null
             }
-            catch {
-                Write-Fail "Git reset failed, will re-clone: $_"
-            }
-            finally { Pop-Location }
+            Start-Sleep -Seconds 5
         }
 
         $outDir = Join-Path $BcbenchRoot $s.OutDir
