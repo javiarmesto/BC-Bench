@@ -1,6 +1,6 @@
 import hashlib
 from pathlib import Path
-from shutil import copytree, rmtree
+from shutil import copy2, copytree, rmtree
 
 from bcbench.config import get_config
 from bcbench.dataset import DatasetEntry
@@ -58,6 +58,14 @@ def setup_instructions_from_config(agent_config: dict, entry: DatasetEntry, repo
 def setup_custom_agent(agent_config: dict, entry: DatasetEntry, repo_path: Path, agent_type: AgentType) -> str | None:
     """
     Setup custom agents in the repository if available.
+
+    If `agents.profiles[agents.name].include` is a non-empty list, only those
+    agent files are copied into <target>/agents/. This keeps BCApps bug-fix
+    runs focused on the single agent (al-developer-bench) or the conductor
+    + 3 subagents bundle, instead of the full 11-agent ALDC library.
+
+    Absent profile or absent include => legacy copy-all behavior (preserves
+    the NAV path and any scenario that does not define a profile).
     """
     custom_agent_config: dict = agent_config["agents"]
     custom_agent_enabled: bool = custom_agent_config["enabled"]
@@ -65,17 +73,36 @@ def setup_custom_agent(agent_config: dict, entry: DatasetEntry, repo_path: Path,
     if custom_agent_enabled:
         source_instructions: Path = _get_source_instructions_path(entry.repo)
         target_dir: Path = agent_type.get_target_dir(repo_path)
-        copytree(source_instructions / "agents", target_dir / "agents", dirs_exist_ok=True)
+        source_agents_dir: Path = source_instructions / "agents"
+        target_agents_dir: Path = target_dir / "agents"
+
+        agent_name: str = custom_agent_config["name"]
+        profiles: dict = custom_agent_config.get("profiles") or {}
+        include: list[str] | None = (profiles.get(agent_name) or {}).get("include")
+
+        if include:
+            target_agents_dir.mkdir(parents=True, exist_ok=True)
+            copied: list[str] = []
+            for name in include:
+                src_file = source_agents_dir / name
+                if not src_file.is_file():
+                    logger.warning(f"Agent file in profile '{agent_name}' not found, skipping: {src_file}")
+                    continue
+                copy2(src_file, target_agents_dir / name)
+                copied.append(name)
+            logger.info(f"Custom agents copied for profile '{agent_name}' ({len(copied)}): {copied}")
+        else:
+            copytree(source_agents_dir, target_agents_dir, dirs_exist_ok=True)
+            logger.info(f"Custom agents are set up from {source_agents_dir} (copy-all)")
 
         # Rewrite hardcoded `.github/` references in agent markdown files to
         # match the target agent's runtime directory. The ALDC source files
         # are authored with `.github/plans/` and `.github/skills/` paths
         # (conductor writes plan files, developer loads skills), which break
         # when copied into `.claude/` for Claude Code runs.
-        _rewrite_agent_paths(target_dir / "agents", agent_type)
+        _rewrite_agent_paths(target_agents_dir, agent_type)
 
-        logger.info(f"Custom agents are set up from {source_instructions / 'agents'}")
-        return custom_agent_config.get("name")
+        return agent_name
 
     return None
 

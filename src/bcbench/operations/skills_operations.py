@@ -13,10 +13,15 @@ def setup_agent_skills(agent_config: dict, entry: DatasetEntry, repo_path: Path,
     """
     Setup skills in the repository if available.
 
+    If `skills.include` is a non-empty list, only those skill folders are
+    copied into <target>/skills/. Absent include => legacy copy-all behavior
+    (preserves any scenario that does not declare a whitelist, including NAV).
+
     Returns:
         True if skills were copied, False if skills are disabled.
     """
-    skills_enabled: bool = agent_config["skills"]["enabled"]
+    skills_config: dict = agent_config["skills"]
+    skills_enabled: bool = skills_config["enabled"]
 
     if skills_enabled:
         source_skills: Path = _get_source_instructions_path(entry.repo)
@@ -34,7 +39,19 @@ def setup_agent_skills(agent_config: dict, entry: DatasetEntry, repo_path: Path,
         if skills_dir.exists():
             rmtree(skills_dir)
 
-        copytree(source_skills_dir, skills_dir)
-
-        logger.info(f"Skills copied from {source_skills_dir} to {skills_dir}")
+        skills_include: list[str] | None = skills_config.get("include")
+        if skills_include:
+            skills_dir.mkdir(parents=True, exist_ok=True)
+            copied: list[str] = []
+            for name in skills_include:
+                src = source_skills_dir / name
+                if not src.is_dir():
+                    logger.warning(f"Skill folder not found, skipping: {src}")
+                    continue
+                copytree(src, skills_dir / name)
+                copied.append(name)
+            logger.info(f"Skills copied ({len(copied)}): {copied}")
+        else:
+            copytree(source_skills_dir, skills_dir)
+            logger.info(f"Skills copied from {source_skills_dir} to {skills_dir} (copy-all)")
     return skills_enabled

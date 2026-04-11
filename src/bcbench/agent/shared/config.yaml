@@ -69,17 +69,44 @@ instructions:
 # 1. whether to copy skills from `src/bcbench/agent/shared/instructions/<sanitized-repo>/skills/`
 #    - Copilot: copies to repo/.github/skills/
 #    - Claude: copies to repo/.claude/skills/
+# 2. optional `include` whitelist: copy only these skill folders. Absent
+#    = copy-all (legacy). Tuned for BCApps bug-fix runs (skip skill-copilot,
+#    skill-migrate, skill-translate, skill-pages, skill-estimation,
+#    al-test-generation which are irrelevant to bug-fix).
 skills:
   enabled: true
+  include:
+    - skill-debug
+    - skill-testing
+    - skill-events
+    - skill-performance
+    - skill-api
+    - skill-permissions
 
 # controls:
 # 1. whether to copy custom agents from `src/bcbench/agent/shared/instructions/<sanitized-repo>/agents/`
 #    - Copilot: copies to repo/.github/agents/
 #    - Claude: copies to repo/.claude/agents/
 # 2. whether to pass --agent=<agent-name> to copilot or claude
+# 3. optional `profiles` map keyed by agent name: each profile.include is the
+#    whitelist of agent markdown files to copy into <target>/agents/. Absent
+#    profile (or absent include) = copy-all (legacy, NAV-preserving).
+#    Driven by agents.name, so Run-FullComparison.ps1 -CompareAll picks the
+#    correct set automatically when it swaps between al-developer-bench and
+#    al-conductor-bench via regex on agents.name.
 agents:
   enabled: true
   name: al-developer-bench
+  profiles:
+    al-developer-bench:
+      include:
+        - al-developer-bench.md
+    al-conductor-bench:
+      include:
+        - al-conductor-bench.md
+        - al-planning-subagent.md    # delegated via Task tool
+        - al-implement-subagent.md   # delegated via Task tool
+        - al-review-subagent.md      # delegated via Task tool
 
 mcp:
   servers:
@@ -97,9 +124,18 @@ mcp:
           "{{package_cache_path}}",
         ]
 
-    # - name: "mslearn"
-    #   type: "http"
-    #   url: "https://learn.microsoft.com/api/mcp"
+    # Microsoft Learn docs MCP — production ALDC expects this for AL/BC docs lookups.
+    # HTTP-only, no runtime dependencies, no corporate proxy needed in tests.
+    - name: "mslearn"
+      type: "http"
+      url: "https://learn.microsoft.com/api/mcp"
+
+    # context7 requires `npx` on the host — vm-bcbench availability unverified.
+    # Uncomment only after confirming `npx` is in PATH on the VM.
+    # - name: "context7"
+    #   type: "stdio"
+    #   command: "npx"
+    #   args: ["-y", "@upstash/context7-mcp@latest"]
 
     # - name: "filesystem"
     #   type: "stdio"
