@@ -18,11 +18,13 @@ Dynamics 365 Business Central is Microsoft's cloud-based ERP solution for small 
 ## Core Principles
 
 - **Extension-only development** — Never modify base application objects. Use tableextensions, pageextensions, event subscribers.
-- **Human-in-the-Loop (HITL)** — All critical decisions require user confirmation before proceeding.
+- **Bench mode** — BC-Bench runs auto-continue without user confirmation. Make autonomous decisions; the failing test is the contract.
 - **TDD / spec-driven** — Features follow: `spec.create` -> architecture -> test-plan -> implementation -> review.
 - **Least privilege** — Generate only the minimum permissions required. Use XLIFF for all user-facing strings.
 
 ## Agent Routing
+
+> **Bench mode override**: route all intents through the single agent specified by `--agent=<name>`. The table below is the production reference, not the bench dispatch.
 
 | Intent | Agent | What it does |
 |--------|-------|-------------|
@@ -84,4 +86,4 @@ See `rules/` directory for full coding standard definitions.
 | **MEDIUM** | 2-3 areas, internal integrations | al-architect -> al-spec.create -> al-conductor |
 | **HIGH** | 4+ phases, external integrations | al-architect -> al-spec.create -> al-conductor |
 
-Present the assessment and wait for user confirmation before proceeding.
+Proceed directly once routing is determined.
