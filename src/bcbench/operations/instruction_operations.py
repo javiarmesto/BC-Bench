@@ -81,6 +81,11 @@ def setup_custom_agent(agent_config: dict, entry: DatasetEntry, repo_path: Path,
         include: list[str] | None = (profiles.get(agent_name) or {}).get("include")
 
         if include:
+            # setup_instructions_from_config already copied the full agents/ dir
+            # into target — wipe it before the filtered copy so the 10+ unused
+            # agent files from the ALDC library don't leak into the testbed.
+            if target_agents_dir.exists():
+                rmtree(target_agents_dir)
             target_agents_dir.mkdir(parents=True, exist_ok=True)
             copied: list[str] = []
             for name in include:
