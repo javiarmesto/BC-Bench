@@ -2,33 +2,28 @@
 
 **Date:** 2026-04-12
 **Instances:** microsoft__BCApps-4699, microsoft__BCApps-4766, microsoft__BCApps-4822, microsoft__BCApps-5633
-**Model:** claude-opus-4-6 (Claude) / claude-opus-4.6 (Copilot)
-**Total time:** ~441 minutes
+**Model:** claude-sonnet-4-6 (Claude) / claude-sonnet-4.6 (Copilot)
+**Total time:** ~26 minutes
 
 ## Results
 
 | Instance | Agent | Scenario | Resolved | Build | Turns | Time | Tokens (K) |
 |----------|-------|----------|:--------:|:-----:|------:|-----:|-----------:|
-| BCApps-4699 | GitHub Copilot | Baseline | ✅ | ✅ | 15 | 120s | 418K |
-| BCApps-4699 | GitHub Copilot | ALDC + al-conductor-bench | ✅ | ✅ | 22 | 141s | 1106K |
-| BCApps-4699 | Claude Code | ALDC + al-developer-bench | ✅ | ✅ | 21 | 109s | 789K |
-| BCApps-4699 | GitHub Copilot | ALDC + al-developer-bench | ❌ | ❌ | 41 | 0s | 0K |
-| BCApps-4699 | Claude Code | ALDC + al-conductor-bench | ❌ | ❌ | 19 | 81s | 964K |
-| BCApps-4699 | Claude Code | Baseline | ✅ | ✅ | 15 | 131s | 468K |
-| BCApps-4766 | GitHub Copilot | Baseline | ❌ | ✅ | 13 | 0s | 0K |
-| BCApps-4766 | GitHub Copilot | ALDC + al-conductor-bench | ❌ | ✅ | 17 | 0s | 0K |
-| BCApps-4766 | Claude Code | ALDC + al-developer-bench | ❌ | ✅ | 8 | 110s | 432K |
-| BCApps-4766 | GitHub Copilot | ALDC + al-developer-bench | ❌ | ✅ | 61 | 0s | 0K |
-| BCApps-4766 | Claude Code | ALDC + al-conductor-bench | ❌ | ✅ | 21 | 144s | 753K |
-| BCApps-4766 | Claude Code | Baseline | ❌ | ✅ | 16 | 222s | 292K |
-| BCApps-4822 | GitHub Copilot | ALDC + al-conductor-bench | ✅ | ✅ | 21 | 231s | 1209K |
-| BCApps-4822 | Claude Code | ALDC + al-developer-bench | ✅ | ✅ | 17 | 127s | 697K |
-| BCApps-4822 | GitHub Copilot | ALDC + al-developer-bench | ✅ | ✅ | 50 | 0s | 0K |
-| BCApps-4822 | Claude Code | ALDC + al-conductor-bench | ✅ | ✅ | 17 | 123s | 622K |
-| BCApps-4822 | Claude Code | Baseline | ✅ | ✅ | 11 | 135s | 217K |
-| BCApps-5633 | GitHub Copilot | ALDC + al-developer-bench | ❌ | ✅ | 31 | 0s | 0K |
-| BCApps-5633 | Claude Code | ALDC + al-conductor-bench | ✅ | ✅ | 21 | 144s | 1040K |
-| BCApps-5633 | Claude Code | Baseline | ✅ | ✅ | 15 | 157s | 298K |
+| BCApps-4699 | Claude Code | Baseline | ✅ | ✅ | 15 | 65s | 337K |
+| BCApps-4699 | GitHub Copilot | ALDC + al-developer-bench | ✅ | ✅ | 23 | 205s | 1210K |
+| BCApps-4699 | Claude Code | ALDC + al-conductor-bench | ✅ | ✅ | 9 | 61s | 468K |
+| BCApps-4822 | GitHub Copilot | Baseline | ✅ | ✅ | 30 | 899s | 1109K |
+| BCApps-4822 | GitHub Copilot | ALDC + al-conductor-bench | ✅ | ✅ | 24 | 215s | 1210K |
+| BCApps-4822 | Claude Code | ALDC + al-developer-bench | ✅ | ✅ | 25 | 259s | 1752K |
+| BCApps-4822 | Claude Code | Baseline | ✅ | ✅ | 16 | 135s | 582K |
+| BCApps-4822 | GitHub Copilot | ALDC + al-developer-bench | ❌ | ✅ | 26 | 482s | 1720K |
+| BCApps-4822 | Claude Code | ALDC + al-conductor-bench | ✅ | ✅ | 35 | 227s | 2195K |
+| BCApps-5633 | GitHub Copilot | Baseline | ❌ | ✅ | 13 | 273s | 430K |
+| BCApps-5633 | GitHub Copilot | ALDC + al-conductor-bench | ❌ | ✅ | 31 | 445s | 2327K |
+| BCApps-5633 | Claude Code | ALDC + al-developer-bench | ❌ | ✅ | 22 | 335s | 1121K |
+| BCApps-5633 | Claude Code | Baseline | ❌ | ✅ | 26 | 460s | 1163K |
+| BCApps-5633 | GitHub Copilot | ALDC + al-developer-bench | ✅ | ✅ | 73 | 1269s | 1435K |
+| BCApps-5633 | Claude Code | ALDC + al-conductor-bench | ❌ | ✅ | 40 | 627s | 3197K |
 
 
 ## Notes
