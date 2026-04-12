@@ -26,6 +26,10 @@
     Skip scenarios where a result jsonl for InstanceId already exists (useful to resume failed runs).
 .PARAMETER AutoShutdown
     Shut down the machine after all scenarios, collect and push are done (and email sent).
+.PARAMETER Category
+    Evaluation category: "bug-fix" (default) or "test-generation".
+    Passed through to Setup-ALDCEvaluation.ps1. For test-generation, output
+    directories get a "-test-generation" suffix to avoid colliding with bug-fix results.
 .PARAMETER LlmFamily
     Model family name (e.g., "sonnet", "opus"). Used to derive model strings:
     Claude Code = claude-{family}-4-6, Copilot = claude-{family}-4.6
@@ -51,7 +55,9 @@ param(
     [string]$EmailTo = "",
     [switch]$OnlyMissing,
     [switch]$AutoShutdown,
-    [string]$LlmFamily = "sonnet"
+    [string]$LlmFamily = "sonnet",
+    [ValidateSet("bug-fix", "test-generation")]
+    [string]$Category = "bug-fix"
 )
 
 Set-StrictMode -Version Latest
@@ -62,6 +68,7 @@ $StartTime = Get-Date
 $claudeModel = "claude-$LlmFamily-4-6"
 $copilotModel = "claude-$LlmFamily-4.6"
 $modelSuffix = "$LlmFamily-4-6"
+$categorySuffix = if ($Category -eq "bug-fix") { "" } else { "-$($Category -replace ' ','-')" }
 
 # ── Load env_version per instance from dataset ───────────────────────────────
 $envVersions = @{}
@@ -87,12 +94,12 @@ function Write-Fail($msg) { Write-Host "  [!!] $msg" -ForegroundColor Red }
 
 # ── Scenario definitions ────────────────────────────────────────────────────
 $scenarios = @(
-    @{ Agent = "claude"; Scenario = "baseline"; Model = $claudeModel; OutDir = "eval_claude_baseline_$modelSuffix" }
-    @{ Agent = "claude"; Scenario = "aldc-developer"; Model = $claudeModel; OutDir = "eval_claude_aldc_developer_$modelSuffix" }
-    @{ Agent = "claude"; Scenario = "aldc-conductor"; Model = $claudeModel; OutDir = "eval_claude_aldc_conductor_$modelSuffix" }
-    @{ Agent = "copilot"; Scenario = "baseline"; Model = $copilotModel; OutDir = "eval_copilot_baseline_$modelSuffix" }
-    @{ Agent = "copilot"; Scenario = "aldc-developer"; Model = $copilotModel; OutDir = "eval_copilot_aldc_developer_$modelSuffix" }
-    @{ Agent = "copilot"; Scenario = "aldc-conductor"; Model = $copilotModel; OutDir = "eval_copilot_aldc_conductor_$modelSuffix" }
+    @{ Agent = "claude"; Scenario = "baseline"; Model = $claudeModel; OutDir = "eval_claude_baseline_${modelSuffix}${categorySuffix}" }
+    @{ Agent = "claude"; Scenario = "aldc-developer"; Model = $claudeModel; OutDir = "eval_claude_aldc_developer_${modelSuffix}${categorySuffix}" }
+    @{ Agent = "claude"; Scenario = "aldc-conductor"; Model = $claudeModel; OutDir = "eval_claude_aldc_conductor_${modelSuffix}${categorySuffix}" }
+    @{ Agent = "copilot"; Scenario = "baseline"; Model = $copilotModel; OutDir = "eval_copilot_baseline_${modelSuffix}${categorySuffix}" }
+    @{ Agent = "copilot"; Scenario = "aldc-developer"; Model = $copilotModel; OutDir = "eval_copilot_aldc_developer_${modelSuffix}${categorySuffix}" }
+    @{ Agent = "copilot"; Scenario = "aldc-conductor"; Model = $copilotModel; OutDir = "eval_copilot_aldc_conductor_${modelSuffix}${categorySuffix}" }
 )
 
 # ── Run evaluations ──────────────────────────────────────────────────────────
@@ -156,6 +163,7 @@ for ($instIdx = 0; $instIdx -lt $instanceCount; $instIdx++) {
                 -Agent $s.Agent `
                 -Model $s.Model `
                 -Scenario $s.Scenario `
+                -Category $Category `
                 -RepoPath $RepoPath `
                 -OutputDir $outDir `
                 @runSkipArgs
