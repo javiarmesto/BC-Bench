@@ -131,7 +131,7 @@ param(
     [string]$AldcAgent = "al-developer-bench",
 
     [Parameter(Mandatory = $false)]
-    [ValidateSet("baseline", "aldc-developer", "aldc-conductor")]
+    [ValidateSet("baseline", "aldc-developer", "aldc-conductor", "aldc-bugfix")]
     [string]$Scenario,
 
     [Parameter(Mandatory = $false)]
@@ -722,6 +722,16 @@ if ($Scenario) {
                 Skills    = $true
                 Agents    = $true
                 AgentName = "al-conductor-bench"
+            }
+        }
+        "aldc-bugfix" {
+            $scenariosToRun += [pscustomobject]@{
+                Name      = "ALDC + al-bugfix-firstline"
+                Tag       = "aldc_al_bugfix_firstline"
+                Instr     = $true
+                Skills    = $true
+                Agents    = $true
+                AgentName = "al-bugfix-firstline"
             }
         }
     }

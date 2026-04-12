@@ -76,6 +76,7 @@ instructions:
 skills:
   enabled: true
   include:
+    - skill-al-bugfix
     - skill-debug
     - skill-testing
     - skill-events
@@ -107,6 +108,9 @@ agents:
         - al-planning-subagent.md    # delegated via Task tool
         - al-implement-subagent.md   # delegated via Task tool
         - al-review-subagent.md      # delegated via Task tool
+    al-bugfix-firstline:
+      include:
+        - al-bugfix-firstline.md
 
 mcp:
   servers:

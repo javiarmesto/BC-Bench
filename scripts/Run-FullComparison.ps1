@@ -97,9 +97,11 @@ $scenarios = @(
     @{ Agent = "claude"; Scenario = "baseline"; Model = $claudeModel; OutDir = "eval_claude_baseline_${modelSuffix}${categorySuffix}" }
     @{ Agent = "claude"; Scenario = "aldc-developer"; Model = $claudeModel; OutDir = "eval_claude_aldc_developer_${modelSuffix}${categorySuffix}" }
     @{ Agent = "claude"; Scenario = "aldc-conductor"; Model = $claudeModel; OutDir = "eval_claude_aldc_conductor_${modelSuffix}${categorySuffix}" }
+    @{ Agent = "claude"; Scenario = "aldc-bugfix"; Model = $claudeModel; OutDir = "eval_claude_aldc_bugfix_${modelSuffix}${categorySuffix}" }
     @{ Agent = "copilot"; Scenario = "baseline"; Model = $copilotModel; OutDir = "eval_copilot_baseline_${modelSuffix}${categorySuffix}" }
     @{ Agent = "copilot"; Scenario = "aldc-developer"; Model = $copilotModel; OutDir = "eval_copilot_aldc_developer_${modelSuffix}${categorySuffix}" }
     @{ Agent = "copilot"; Scenario = "aldc-conductor"; Model = $copilotModel; OutDir = "eval_copilot_aldc_conductor_${modelSuffix}${categorySuffix}" }
+    @{ Agent = "copilot"; Scenario = "aldc-bugfix"; Model = $copilotModel; OutDir = "eval_copilot_aldc_bugfix_${modelSuffix}${categorySuffix}" }
 )
 
 # ── Run evaluations ──────────────────────────────────────────────────────────
