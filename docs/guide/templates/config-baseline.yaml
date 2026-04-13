@@ -1,0 +1,89 @@
+# config-baseline.yaml
+# =====================================================================
+# Baseline configuration: agent with NO custom instructions, NO skills,
+# NO custom agent. This is the "vanilla" setup to establish a baseline
+# performance number for comparison.
+#
+# To use: copy this file over src/bcbench/agent/shared/config.yaml
+# before running the evaluation. Restore the original afterward.
+#
+# Guide reference: docs/guide/03-configuracion-de-agentes.md
+# =====================================================================
+
+prompt:
+  include_project_paths: false
+  test-generation-input: "both"
+
+  bug-fix-template: |
+    You are working with a Business Central (AL) code repository at {{repo_path}}.
+
+    Task: Fix the issue described below
+
+    Important constraints:
+    - Do NOT modify any testing logic or test files
+    - Focus solely on fixing the reported issue
+    {% if al_mcp %}
+    - Do NOT try to run tests
+    {% else %}
+    - Do NOT try to build or run tests, just provide the code changes needed
+    {% endif %}
+    - Do NOT commit any changes to the repository
+    - Focus on W1 localization, do NOT worry about other localizations (e.g. DK, APAC)
+
+    Issue details:
+    {{task}}
+
+  test-generation-template: |
+    You are working with a Business Central (AL) code repository at {{repo_path}}.
+    {% if is_gold_patch and is_problem_statement %}
+    Task: Generate ONE NEW test case that reproduce the issue described below
+      The fix has already been applied as local unstaged changes. Write a test that passes with this fix and would fail without it.
+    {% elif is_gold_patch %}
+    Task: Generate ONE NEW test case that verifies the unstaged changes in *.al files
+      The fix has already been applied as local unstaged changes. Write a test that passes with this fix and would fail without it.
+    {% else %}
+    Task: Generate ONE NEW test case that reproduce the issue described below
+      The tests should fail against the current codebase (unfixed) and should pass once the issue is fixed.
+    {% endif %}
+
+    Important constraints:
+    - Do NOT modify any production code or existing tests
+    - Focus solely on generating tests
+    {% if al_mcp %}
+    - Do NOT try to run tests
+    {% else %}
+    - Do NOT try to build or run tests, just provide the code changes needed
+    {% endif %}
+    - Do NOT commit any changes to the repository
+    - Focus on W1 localization, do NOT worry about other localizations (e.g. DK, APAC)
+    {% if is_problem_statement %}
+    Issue details:
+    {{task}}
+    {% endif %}
+
+# BASELINE: all three disabled
+instructions:
+  enabled: false
+
+skills:
+  enabled: false
+
+agents:
+  enabled: false
+
+mcp:
+  servers:
+    - name: "altool"
+      type: "stdio"
+      command: "al"
+      args:
+        [
+          "launchmcpserver",
+          "--transport",
+          "stdio",
+          "--packagecachepath",
+          "{{package_cache_path}}",
+        ]
+    - name: "mslearn"
+      type: "http"
+      url: "https://learn.microsoft.com/api/mcp"

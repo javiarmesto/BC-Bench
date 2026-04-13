@@ -1,0 +1,39 @@
+# BC-Bench Environment Variables
+# Copy this file to .env in the BC-Bench root and fill in your values.
+# Guide reference: docs/guide/02-setup-y-primera-evaluacion.md
+
+# ============================================================================
+# AGENT API KEYS (at least one required depending on which agent you evaluate)
+# ============================================================================
+
+# Anthropic API key — required for Claude Code evaluations
+ANTHROPIC_API_KEY=sk-ant-your_key_here
+
+# GitHub Personal Access Token — required for Copilot CLI and for cloning BCApps
+GITHUB_TOKEN=ghp_your_token_here
+
+# Azure AI Foundry — required for mini-bc-agent evaluations
+AZURE_API_BASE=https://your-resource.openai.azure.com/
+AZURE_API_KEY=your_azure_key_here
+AZURE_API_VERSION=2024-12-01-preview
+
+# Azure DevOps PAT — required only if working with microsoftInternal/NAV dataset entries
+ADO_TOKEN=your_ado_token_here
+
+# ============================================================================
+# BC CONTAINER (required for full evaluations with build + tests)
+# ============================================================================
+
+BC_CONTAINER_NAME=bcbench
+BC_CONTAINER_USERNAME=admin
+BC_CONTAINER_PASSWORD=YourSecurePassword123!
+
+# ============================================================================
+# OPTIONAL
+# ============================================================================
+
+# Set to "1" to enable debug logging in GitHub Actions runner
+# RUNNER_DEBUG=1
+
+# Gmail app password — only needed for email notifications in Run-FullComparison.ps1
+# GMAIL_APP_PASSWORD=your_gmail_app_password
