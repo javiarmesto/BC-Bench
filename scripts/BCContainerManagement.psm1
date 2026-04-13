@@ -243,7 +243,7 @@ function Test-ContainerExists {
         [Parameter(Mandatory = $true)]
         [string]$ContainerName
     )
-    return ($null -ne $(docker ps -q -f name="$ContainerName"))
+    return ($null -ne $(docker ps -aq -f name="$ContainerName"))
 }
 
 <#

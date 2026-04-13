@@ -515,18 +515,30 @@ else {
 
 Write-Step "Setting up Business Central container" -Step 5 -Total $totalSteps
 
+$performContainerSetup = -not $SkipContainerSetup
+
 if ($SkipContainerSetup) {
-    # Verify container exists
-    $containerExists = docker ps -q -f name="$ContainerName" 2>$null
-    if ($containerExists) {
+    # Check if container is currently running
+    $containerRunning = docker ps -q -f name="$ContainerName" 2>$null
+    # Check if container exists at all (including stopped/exited)
+    $containerAny     = docker ps -aq -f name="$ContainerName" 2>$null
+
+    if ($containerRunning) {
         Write-Success "Using existing container '$ContainerName'"
     }
+    elseif ($containerAny) {
+        Write-Info "Container '$ContainerName' is stopped. Starting it..."
+        docker start $ContainerName 2>$null | Out-Null
+        Start-Sleep -Seconds 10
+        Write-Success "Container '$ContainerName' started"
+    }
     else {
-        Write-Err "Container '$ContainerName' not found (--SkipContainerSetup was set)"
-        exit 1
+        Write-Warn "Container '$ContainerName' not found — creating it (--SkipContainerSetup prevents re-creation only)"
+        $performContainerSetup = $true
     }
 }
-else {
+
+if ($performContainerSetup) {
     # Check if container already exists
     $containerExists = docker ps -aq -f name="$ContainerName" 2>$null
     if ($containerExists) {
