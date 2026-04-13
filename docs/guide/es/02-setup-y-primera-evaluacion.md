@@ -1,3 +1,9 @@
+---
+layout: default
+title: "Parte 2 — Setup"
+lang: es
+---
+
 # BC-Bench: Guia Paso a Paso
 
 ## Parte 2 - Instalacion, Setup y Primera Evaluacion

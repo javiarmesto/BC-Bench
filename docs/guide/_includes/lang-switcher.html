@@ -1,0 +1,11 @@
+<nav class="lang-switcher">
+  {% if page.lang == "es" %}
+    {% assign en_path = page.url | replace: "/es/", "/en/" | replace: "introduccion", "introduction" | replace: "setup-y-primera-evaluacion", "setup-and-first-evaluation" | replace: "configuracion-de-agentes", "agent-configuration" | replace: "baselines-y-scripts-vm", "baselines-and-vm-scripts" | replace: "resultados-y-analisis", "results-and-analysis" %}
+    <a href="{{ en_path | relative_url }}">English</a> | <strong>Espanol</strong>
+  {% elsif page.lang == "en" %}
+    {% assign es_path = page.url | replace: "/en/", "/es/" | replace: "introduction", "introduccion" | replace: "setup-and-first-evaluation", "setup-y-primera-evaluacion" | replace: "agent-configuration", "configuracion-de-agentes" | replace: "baselines-and-vm-scripts", "baselines-y-scripts-vm" | replace: "results-and-analysis", "resultados-y-analisis" %}
+    <strong>English</strong> | <a href="{{ es_path | relative_url }}">Espanol</a>
+  {% else %}
+    <a href="{{ '/en/' | relative_url }}">English</a> | <a href="{{ '/es/' | relative_url }}">Espanol</a>
+  {% endif %}
+</nav>

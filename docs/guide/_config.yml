@@ -1,0 +1,22 @@
+title: "BC-Bench Guide"
+description: "Step-by-step guide for evaluating coding agents on Business Central tasks"
+theme: minima
+baseurl: "/bc-bench-guide"
+url: ""
+
+defaults:
+  - scope:
+      path: "en"
+    values:
+      lang: "en"
+      layout: "default"
+  - scope:
+      path: "es"
+    values:
+      lang: "es"
+      layout: "default"
+
+exclude:
+  - README.md
+  - templates/
+  - .gitignore

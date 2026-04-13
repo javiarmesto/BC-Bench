@@ -1,3 +1,9 @@
+---
+layout: default
+title: "Parte 4 — Baselines y VM"
+lang: es
+---
+
 # BC-Bench: Guia Paso a Paso
 
 ## Parte 4 - Comparacion de Baselines y Scripts para VM

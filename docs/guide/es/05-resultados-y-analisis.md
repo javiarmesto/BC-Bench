@@ -1,3 +1,9 @@
+---
+layout: default
+title: "Parte 5 — Resultados"
+lang: es
+---
+
 # BC-Bench: Guia Paso a Paso
 
 ## Parte 5 - Obtencion, Analisis y Documentacion de Resultados

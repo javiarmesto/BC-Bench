@@ -1,3 +1,9 @@
+---
+layout: default
+title: "Parte 3 — Configuracion"
+lang: es
+---
+
 # BC-Bench: Guia Paso a Paso
 
 ## Parte 3 - Configuracion de Agentes y Personalizacion

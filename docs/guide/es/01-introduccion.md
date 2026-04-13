@@ -1,3 +1,9 @@
+---
+layout: default
+title: "Parte 1 — Introduccion"
+lang: es
+---
+
 # BC-Bench: Guia Paso a Paso
 
 ## Parte 1 - Introduccion y Conceptos Fundamentales
