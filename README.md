@@ -1,3 +1,7 @@
+> **Fork context:** this repository is a fork of [microsoft/BC-Bench](https://github.com/microsoft/BC-Bench). The documentation below retains the original project's authorship. Use the parent repository for its published releases and support guidance; this audit does not establish a separate maintained distribution or promise synchronization.
+>
+> [Compare this fork with its parent](https://github.com/microsoft/BC-Bench/compare/main...javiarmesto:BC-Bench:main). The comparison shows the current differences; fork-specific behavior must be assessed from those changes. Static documentation review: **6 October 2026**; no build, installation or service invocation performed.
+
 # BC-Bench
 
 [![Dataset Validation and Verification](https://github.com/microsoft/BC-Bench/actions/workflows/dataset-validation.yml/badge.svg?event=schedule)](https://github.com/microsoft/BC-Bench/actions/workflows/dataset-validation.yml) [![CI](https://github.com/microsoft/BC-Bench/actions/workflows/CI.yml/badge.svg)](https://github.com/microsoft/BC-Bench/actions/workflows/CI.yml)
